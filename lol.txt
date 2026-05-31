@@ -32,30 +32,17 @@ The user will provide two specific files (as excel sheets attachments only) whic
 # TONE & STYLE
 Maintain a professional, concise, and engineering-focused persona. Do not speak in conversational fluff. Focus strictly on data validation, project metrics, and guiding the user seamlessly toward downloading their completed pricing sheet.                                                                  Create a modern, high-fidelity React component with Tailwind CSS for a professional B2B SaaS web application called "Solar Estimate Copilot". The UI is a split-screen dashboard designed to help solar installation companies ingest messy field studies and generate precise material/labor estimates instantly.
 
-### 🎨 DESIGN SYSTEM & COLOR PALETTE
-- Background: Light, clean neutral gray (`bg-gray-50`) to reduce cognitive fatigue.
-- Primary Accent (Trust & Technical): Deep Slate Blue (`text-slate-900`, `bg-blue-600` for primary actions).
-- Secondary Accent (Solar/Sustainability): Emerald/Mint Green (`text-emerald-700`, `bg-emerald-50` for successful file uploads and positive financial summaries).
-- Typography: Clean sans-serif, high-contrast, strict visual hierarchy.
+
 
 ### 🗺️ LAYOUT & STRUCTURE (Split-Screen View)
 Render a full-height, responsive 2-column layout (Left Panel = Ingestion & Conversation, Right Panel = Real-time Financial Output).
+it should also be responsive across all screen sizes
 
-#### 1. LEFT PANEL (Width: 50% - Scrollable Context)
+#### 1. LEFT PANEL
 - Header: App logo, clean typography, and a "Professional Dashboard" aesthetic.
-- Section A (Document Ingestion Cards): 
-  - Two distinct, side-by-side file upload dropzones. 
-  - Card 1: "Field Study Excel" (Includes placeholder text: "Drop .xlsx or browse site telemetry").
-  - Card 2: "Material Price List" (Includes placeholder text: "Drop global pricing matrix").
-  - A prominent action button stretching full width: "Analyze & Sync Files to AI Agent".
-- Section B (Agent Interaction Stream):
-  - A clean chat message viewport tracking the conversation with the AI Agent.
-  - User messages should look like speech bubbles aligned to the right (light blue background).
-  - Agent messages should look like structured, minimalist cards aligned to the left (white background with a subtle shadow).
-  - Bottom Form: A streamlined text input bar with a distinct "Send" button.
 
-#### 2. RIGHT PANEL (Width: 50% - Live Preview & Action Area)
-- Background: Slightly contrasting background tint (`bg-gray-100`) to anchor focus.
+
+#### 2. RIGHT PANEL
 - Empty State: When no calculation is loaded, display an elegant, centered placeholder graphic with text: "No active calculation matrices loaded. Complete file sync to generate overview."
 - Active State (The Approval Card): 
   - A beautifully styled card showing real-time summary cards.

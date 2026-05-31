@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   const modelMessages = await convertToModelMessages(messages);
 
   const result = streamText({
-    model: google('gemini-1.5-pro'),
+    model: google('gemini-2.5-flash'),
     messages: modelMessages,
     system: `You are an expert Solar Installation Estimator Agent. 
     Your job is to analyze the user's project request and prepare a structured dataset for calculations.
