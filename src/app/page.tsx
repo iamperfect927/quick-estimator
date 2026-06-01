@@ -223,6 +223,19 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                     <span className="text-[11px] text-slate-400 mt-2 font-medium">Click or Drag Sheet</span>
                   </div>
                 </div>
+
+                {/* Google Drive Trigger for Field Study */}
+                <button
+                  type="button"
+                  onClick={() => handleGoogleDrivePicker('field')}
+                  className="mt-3 flex items-center justify-center space-x-2 w-full rounded-lg border border-slate-800 bg-slate-900/80 hover:bg-slate-850 hover:border-blue-500/30 px-3 py-2 text-[11px] font-medium text-slate-300 transition-all"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z" />
+                  </svg>
+                  <span>Import from Drive</span>
+                </button>
+
                 {fieldStudyFile && (
                   <div className="mt-3 flex items-center space-x-1.5 justify-center bg-emerald-950/30 border border-emerald-900/40 px-2 py-1 rounded text-[10px] text-emerald-400 font-mono truncate">
                     <span>📄</span>
@@ -248,6 +261,19 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                     <span className="text-[11px] text-slate-400 mt-2 font-medium">Click or Drag Index</span>
                   </div>
                 </div>
+
+                {/* Google Drive Trigger for Price List */}
+                <button
+                  type="button"
+                  onClick={() => handleGoogleDrivePicker('price')}
+                  className="mt-3 flex items-center justify-center space-x-2 w-full rounded-lg border border-slate-800 bg-slate-900/80 hover:bg-slate-850 hover:border-blue-500/30 px-3 py-2 text-[11px] font-medium text-slate-300 transition-all"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" />
+                  </svg>
+                  <span>Import from Drive</span>
+                </button>
+                
                 {priceListFile && (
                   <div className="mt-3 flex items-center space-x-1.5 justify-center bg-emerald-950/30 border border-emerald-900/40 px-2 py-1 rounded text-[10px] text-emerald-400 font-mono truncate">
                     <span>📄</span>
