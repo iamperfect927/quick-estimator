@@ -27,7 +27,7 @@ export async function POST(req: Request) {
             hours: z.number(),
             hourlyRate: z.number(),
           })),
-          marginPercentage: z.number().default(15),
+          marginPercentage: z.number().default(0),
         })),
         execute: async (args) => {
           // Simply return data to frontend client context to hold in state

@@ -30,16 +30,41 @@ export async function generateEstimateExcel(data: CalculationInput): Promise<Buf
     right: { style: 'thin' as const, color: { argb: 'FF' + borderGray } }
   };
 
-  // 1. BRAND LOGO BLOCK (Rows 1-2 merged)
-  sheet.mergeCells('A1:D2');
-  const logoCell = sheet.getCell('A1');
+  // 1. BRAND LOGO BLOCK (Logo image in A1:A2, text in merged B1:D2)
+  sheet.getRow(1).height = 25;
+  sheet.getRow(2).height = 25;
+
+  // Fill A1:A2 background with the primary emerald green accent to match header theme
+  for (let r = 1; r <= 2; r++) {
+    const cell = sheet.getCell(`A${r}`);
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + emeraldGreen } };
+  }
+
+  // Merge the title text cells across columns B to D next to the logo
+  sheet.mergeCells('B1:D2');
+  const logoCell = sheet.getCell('B1');
   logoCell.value = 'BLUE FRAMES SOLAR ESTIMATE';
-  logoCell.font = { name: 'Segoe UI', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+  logoCell.font = { name: 'Segoe UI', size: 15, bold: true, color: { argb: 'FFFFFFFF' } };
   logoCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + emeraldGreen } };
-  logoCell.alignment = { vertical: 'middle', horizontal: 'center' };
-  
-  sheet.getRow(1).height = 20;
-  sheet.getRow(2).height = 20;
+  logoCell.alignment = { vertical: 'middle', horizontal: 'left' };
+
+  try {
+    const path = require('path');
+    const logoPath = path.join(process.cwd(), 'public/solar_logo.png');
+    const logoId = workbook.addImage({
+      filename: logoPath,
+      extension: 'png',
+    });
+    
+    // Fit the logo cleanly into cell A1:A2 with custom padding to ensure it fits beautifully
+    sheet.addImage(logoId, {
+      tl: { col: 0.1, row: 0.15 },
+      br: { col: 0.9, row: 1.85 },
+      editAs: 'oneCell'
+    } as any);
+  } catch (err) {
+    console.error('Failed to embed logo image into Excel:', err);
+  }
 
   // 2. CUSTOMER & PROJECT BANNER (Row 3)
   sheet.mergeCells('A3:D3');
@@ -248,32 +273,8 @@ export async function generateEstimateExcel(data: CalculationInput): Promise<Buf
   // --- SECTION 3: GRAND SUMMARY ---
   addSectionHeader('3. PROJECT ESTIMATION OVERALL SUMMARY');
 
-  const baseSubtotal = materialSubtotal + laborSubtotal;
-  const marginMultiplier = data.marginPercentage / 100;
-  const marginMarkup = baseSubtotal * marginMultiplier;
-  const grandTotal = baseSubtotal + marginMarkup;
+  const grandTotal = materialSubtotal + laborSubtotal;
 
-  // Raw Subtotal
-  const subtotalSummaryRow = sheet.addRow(['Subtotal', '', '', baseSubtotal]);
-  subtotalSummaryRow.height = 22;
-  sheet.mergeCells(`A${subtotalSummaryRow.number}:C${subtotalSummaryRow.number}`);
-  subtotalSummaryRow.getCell(1).font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF475569' } };
-  subtotalSummaryRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'right' };
-  subtotalSummaryRow.getCell(4).font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF334155' } };
-  subtotalSummaryRow.getCell(4).alignment = { vertical: 'middle', horizontal: 'right' };
-  subtotalSummaryRow.getCell(4).numFmt = '#,##0" XAF"';
-  subtotalSummaryRow.getCell(4).border = thinBorder;
-
-  // Margin Markup Row
-  const marginSummaryRow = sheet.addRow([`Overhead Margin & Risk Markup (${data.marginPercentage}%)`, '', '', marginMarkup]);
-  marginSummaryRow.height = 22;
-  sheet.mergeCells(`A${marginSummaryRow.number}:C${marginSummaryRow.number}`);
-  marginSummaryRow.getCell(1).font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF475569' } };
-  marginSummaryRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'right' };
-  marginSummaryRow.getCell(4).font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF334155' } };
-  marginSummaryRow.getCell(4).alignment = { vertical: 'middle', horizontal: 'right' };
-  marginSummaryRow.getCell(4).numFmt = '#,##0" XAF"';
-  marginSummaryRow.getCell(4).border = thinBorder;
 
   // Grand Total Row
   const grandTotalSummaryRow = sheet.addRow(['TOTAL', '', '', grandTotal]);

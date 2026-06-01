@@ -12,13 +12,10 @@ export async function POST(req: Request) {
     }
 
     // 1. READ FIELD STUDY WORKBOOK
-    // const fieldStudyBuffer = Buffer.from(await fieldStudyFile.arrayBuffer());
-    // const fieldWorkbook = new ExcelJS.Workbook();
-    // await fieldWorkbook.xlsx.load(fieldStudyBuffer);
-
-    const fieldStudyArrayBuffer = await fieldStudyFile.arrayBuffer();
+    const fieldStudyBuffer = Buffer.from(await fieldStudyFile.arrayBuffer());
     const fieldWorkbook = new ExcelJS.Workbook();
-    await fieldWorkbook.xlsx.load(fieldStudyArrayBuffer as any);
+    await fieldWorkbook.xlsx.load(fieldStudyBuffer as any);
+
 
     let customerName = 'Valued Solar Client';
     let devices: any[] = [];
@@ -136,7 +133,7 @@ export async function POST(req: Request) {
       try {
         const priceListBuffer = Buffer.from(await priceListFile.arrayBuffer());
         const priceWorkbook = new ExcelJS.Workbook();
-        await priceWorkbook.xlsx.load(priceListBuffer);
+        await priceWorkbook.xlsx.load(priceListBuffer as any);
 
         for (const sheet of priceWorkbook.worksheets) {
           const name = sheet.name.toLowerCase();
@@ -375,7 +372,7 @@ export async function POST(req: Request) {
       },
       materials,
       labor,
-      marginPercentage: 15,
+      marginPercentage: 0,
       warnings
     });
   } catch (err: any) {

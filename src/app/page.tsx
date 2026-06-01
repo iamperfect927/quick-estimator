@@ -15,6 +15,13 @@ export default function EstimatorDashboard() {
   // Local input text state (Required by AI SDK v6 since input/handleInputChange/handleSubmit are separate)
   const [inputText, setInputText] = useState('');
 
+  // Google Drive Modal & Fetch states
+  const [driveModalOpen, setDriveModalOpen] = useState(false);
+  const [driveImportType, setDriveImportType] = useState<'field' | 'price' | null>(null);
+  const [driveUrlInput, setDriveUrlInput] = useState('');
+  const [driveLoading, setDriveLoading] = useState(false);
+  const [driveError, setDriveError] = useState('');
+
   // Initializing useChat with DefaultChatTransport for custom endpoint and onToolCall handler
   const { messages, sendMessage, setMessages, status } = useChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
@@ -33,6 +40,58 @@ export default function EstimatorDashboard() {
       if (type === 'field') setFieldStudyFile(file);
       if (type === 'price') setPriceListFile(file);
       setUploadStatus('');
+    }
+  };
+
+  // Trigger Google Drive share link dialog modal
+  const handleGoogleDrivePicker = (type: 'field' | 'price') => {
+    setDriveImportType(type);
+    setDriveUrlInput('');
+    setDriveError('');
+    setDriveModalOpen(true);
+  };
+
+  // Import file from Google Drive via backend proxy endpoint
+  const handleImportFromDrive = async () => {
+    if (!driveUrlInput.trim()) {
+      setDriveError('⚠️ Please enter a Google Drive sharing link.');
+      return;
+    }
+
+    setDriveLoading(true);
+    setDriveError('');
+
+    try {
+      const res = await fetch(`/api/fetch-drive-file?url=${encodeURIComponent(driveUrlInput.trim())}`);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to download file from Google Drive.');
+      }
+
+      const blob = await res.blob();
+      
+      const contentDisposition = res.headers.get('content-disposition');
+      let fileName = driveImportType === 'field' ? 'field_study.xlsx' : 'price_list.xlsx';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) fileName = match[1];
+      }
+
+      const file = new File([blob], fileName, { type: blob.type });
+
+      if (driveImportType === 'field') {
+        setFieldStudyFile(file);
+      } else if (driveImportType === 'price') {
+        setPriceListFile(file);
+      }
+
+      setDriveModalOpen(false);
+      setUploadStatus(`✅ Imported "${fileName}" from Google Drive!`);
+    } catch (err: any) {
+      console.error('[Google Drive Import Error]:', err);
+      setDriveError(err.message || 'An error occurred while fetching the file.');
+    } finally {
+      setDriveLoading(false);
     }
   };
 
@@ -81,7 +140,7 @@ export default function EstimatorDashboard() {
 
       const totalMat = parsed.materials?.reduce((acc: number, item: any) => acc + item.quantity * item.unitPrice, 0) || 0;
       const totalLab = parsed.labor?.reduce((acc: number, item: any) => acc + item.hours * item.hourlyRate, 0) || 0;
-      const grandTotalXAF = (totalMat + totalLab) * (1 + (parsed.marginPercentage || 15) / 100);
+      const grandTotalXAF = totalMat + totalLab;
 
       const systemNoticeText = `[SYSTEM NOTICE: Ingestion of Tollgate load profiles complete for "${parsed.customerName}".
 
@@ -102,7 +161,6 @@ ${parsed.materials?.map((item: any) => `  • ${item.name} — Qty: ${item.quant
 💰 FINANCIAL SUMMARY:
   • Materials Subtotal: ${totalMat.toLocaleString()} XAF
   • Labor Subtotal (30% of Equipment): ${totalLab.toLocaleString()} XAF
-  • Margin: ${parsed.marginPercentage}%
   • GRAND TOTAL: ${grandTotalXAF.toLocaleString(undefined, { maximumFractionDigits: 0 })} XAF${warningsBlock}
 
 The right-panel estimation dashboard has been auto-populated. You can now answer follow-up questions, adjust margins, or generate the Excel report.]`;
@@ -175,7 +233,7 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
   // Calculate quick totals for visual preview
   const materialsSubtotal = calculationResult?.materials?.reduce((acc: number, item: any) => acc + (item.quantity * item.unitPrice), 0) || 0;
   const laborSubtotal = calculationResult?.labor?.reduce((acc: number, item: any) => acc + (item.hours * item.hourlyRate), 0) || 0;
-  const grandTotal = (materialsSubtotal + laborSubtotal) * (1 + (calculationResult?.marginPercentage || 15) / 100);
+  const grandTotal = materialsSubtotal + laborSubtotal;
 
   return (
     <div className="flex h-screen bg-slate-950 font-sans text-slate-100 overflow-hidden">
@@ -225,7 +283,7 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                 </div>
 
                 {/* Google Drive Trigger for Field Study */}
-                {/* <button
+                <button
                   type="button"
                   onClick={() => handleGoogleDrivePicker('field')}
                   className="mt-3 flex items-center justify-center space-x-2 w-full rounded-lg border border-slate-800 bg-slate-900/80 hover:bg-slate-850 hover:border-blue-500/30 px-3 py-2 text-[11px] font-medium text-slate-300 transition-all"
@@ -234,7 +292,7 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                     <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z" />
                   </svg>
                   <span>Import from Drive</span>
-                </button>*/}
+                </button>
 
                 {fieldStudyFile && (
                   <div className="mt-3 flex items-center space-x-1.5 justify-center bg-emerald-950/30 border border-emerald-900/40 px-2 py-1 rounded text-[10px] text-emerald-400 font-mono truncate">
@@ -263,7 +321,7 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                 </div>
 
                 {/* Google Drive Trigger for Price List */}
-                {/* <button
+                <button
                   type="button"
                   onClick={() => handleGoogleDrivePicker('price')}
                   className="mt-3 flex items-center justify-center space-x-2 w-full rounded-lg border border-slate-800 bg-slate-900/80 hover:bg-slate-850 hover:border-blue-500/30 px-3 py-2 text-[11px] font-medium text-slate-300 transition-all"
@@ -272,7 +330,7 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                     <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" />
                   </svg>
                   <span>Import from Drive</span>
-                </button>*/}
+                </button>
                 
                 {priceListFile && (
                   <div className="mt-3 flex items-center space-x-1.5 justify-center bg-emerald-950/30 border border-emerald-900/40 px-2 py-1 rounded text-[10px] text-emerald-400 font-mono truncate">
@@ -341,11 +399,13 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                   </div>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1 animate-pulse">
-                  <span className="text-[10px] font-medium text-emerald-500 uppercase tracking-wider block">Margin Rate</span>
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
+                  <span className="text-[10px] font-medium text-emerald-400 uppercase tracking-wider block">Peak System Load</span>
                   <div className="flex items-baseline space-x-1">
-                    <span className="text-lg font-bold text-emerald-400">{calculationResult.marginPercentage || 15}</span>
-                    <span className="text-[10px] text-emerald-500 font-medium">%</span>
+                    <span className="text-lg font-bold text-emerald-400">
+                      {calculationResult.metrics?.peakKW?.toFixed(1) || '0.0'}
+                    </span>
+                    <span className="text-[10px] text-emerald-400 font-medium">kW</span>
                   </div>
                 </div>
               </div>
@@ -433,7 +493,7 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                 <div className="flex justify-between items-center">
                   <div>
                     <span className="text-xs font-semibold text-slate-300 uppercase block">Grand Total</span>
-                    <span className="text-[10px] text-emerald-400 font-medium">Including {calculationResult.marginPercentage || 15}% Markup</span>
+                    <span className="text-[10px] text-slate-500 font-medium">Direct Materials & Labor</span>
                   </div>
                   <span className="text-xl font-bold font-mono text-emerald-400 shadow-emerald-400/10">
                     {grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} XAF
@@ -490,6 +550,83 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
           </div>
         )}
       </div>
+
+      {/* 🔮 GOOGLE DRIVE IMPORT GLASSMORPHIC MODAL */}
+      {driveModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/95 p-6 shadow-2xl transition-all duration-300">
+            {/* Background ambient glow */}
+            <div className="absolute -top-12 -right-12 w-28 h-28 bg-emerald-500/10 blur-3xl rounded-full" />
+            <div className="absolute -bottom-12 -left-12 w-28 h-28 bg-blue-500/10 blur-3xl rounded-full" />
+
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                <svg className="w-5 h-5 animate-pulse" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" />
+                </svg>
+              </div>
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                Import {driveImportType === 'field' ? 'Field Study' : 'Price List'} from Drive
+              </h3>
+            </div>
+
+            <p className="text-xs text-slate-400 leading-relaxed mb-4">
+              Paste the Google Drive or Google Sheets sharing link below. Ensure the file has sharing settings configured as <span className="text-emerald-400 font-semibold">"Anyone with the link can view"</span> so the parsing engine can fetch it.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
+                  Google Drive Shareable Link
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://drive.google.com/file/d/.../view"
+                  value={driveUrlInput}
+                  onChange={(e) => setDriveUrlInput(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-600 outline-none transition-all"
+                  disabled={driveLoading}
+                />
+              </div>
+
+              {driveError && (
+                <div className="bg-rose-950/40 border border-rose-900/40 text-rose-300 text-xs p-2.5 rounded-lg font-medium leading-relaxed">
+                  {driveError}
+                </div>
+              )}
+
+              <div className="flex items-center space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDriveModalOpen(false)}
+                  className="flex-1 bg-slate-800 hover:bg-slate-750 active:scale-[0.99] text-slate-350 text-xs font-semibold py-2.5 rounded-lg border border-slate-750 transition-all duration-200"
+                  disabled={driveLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleImportFromDrive}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white text-xs font-bold py-2.5 rounded-lg shadow-lg shadow-emerald-950/20 transition-all duration-200 flex items-center justify-center space-x-1.5"
+                  disabled={driveLoading}
+                >
+                  {driveLoading ? (
+                    <>
+                      <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      <span>Fetching...</span>
+                    </>
+                  ) : (
+                    <span>Import File</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
