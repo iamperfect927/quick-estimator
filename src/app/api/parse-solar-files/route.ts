@@ -12,9 +12,13 @@ export async function POST(req: Request) {
     }
 
     // 1. READ FIELD STUDY WORKBOOK
-    const fieldStudyBuffer = Buffer.from(await fieldStudyFile.arrayBuffer());
+    // const fieldStudyBuffer = Buffer.from(await fieldStudyFile.arrayBuffer());
+    // const fieldWorkbook = new ExcelJS.Workbook();
+    // await fieldWorkbook.xlsx.load(fieldStudyBuffer);
+
+    const fieldStudyArrayBuffer = await fieldStudyFile.arrayBuffer();
     const fieldWorkbook = new ExcelJS.Workbook();
-    await fieldWorkbook.xlsx.load(fieldStudyBuffer);
+    await fieldWorkbook.xlsx.load(fieldStudyArrayBuffer as any);
 
     let customerName = 'Valued Solar Client';
     let devices: any[] = [];
