@@ -14,4 +14,12 @@ export interface CalculationInput {
   materials: Material[];
   labor: LaborTask[];
   marginPercentage: number;
-}
+  customerName?: string;
+  metrics?: {
+    peakKW?: number;
+    dayConsumptionKWh?: number;
+    nightConsumptionKWh?: number;
+    apartmentCount?: number;
+    totalDeviceCount?: number;
+  };
+}

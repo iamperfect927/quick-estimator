@@ -36,33 +36,89 @@ export default function EstimatorDashboard() {
     }
   };
 
-  // Process files and inject them into the AI context using the proper UIMessage structure
+  // Process files: send to backend parser then inject results into state + AI context
   const handleAttachFilesToAI = async () => {
     if (!fieldStudyFile || !priceListFile) {
       setUploadStatus('❌ Please upload both required files first.');
       return;
     }
 
-    setUploadStatus('⏳ Reading sheets and briefing your AI copilot...');
+    setUploadStatus('⏳ Parsing load profiles and cross-referencing catalog...');
 
-    // Standard user notification formatted exactly to UIMessage structure with 'parts' array
-    const systemPromptNotification: UIMessage = {
-      id: 'file-upload-context-' + Date.now(),
-      role: 'user',
-      parts: [
-        {
-          type: 'text',
-          text: `[SYSTEM NOTICE: User successfully uploaded files. 
-          File 1: Field Study spreadsheet (${fieldStudyFile.name}). 
-          File 2: Materials Price List (${priceListFile.name}).
-          Please analyze these, identify compatible SKUs, and prepare the baseline solar calculation estimate now.]`,
-        }
-      ]
-    };
+    try {
+      // Build FormData payload with both workbooks
+      const formData = new FormData();
+      formData.append('fieldStudy', fieldStudyFile);
+      formData.append('priceList', priceListFile);
 
-    // Inject the notice into the chat stream history
-    setMessages((prev) => [...prev, systemPromptNotification]);
-    setUploadStatus('✅ Files attached! Press send or ask the copilot to run calculations.');
+      const res = await fetch('/api/parse-solar-files', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        setUploadStatus(`❌ Parse Error: ${err.error || 'Unknown failure'}`);
+        return;
+      }
+
+      const parsed = await res.json();
+
+      // Feed aggregated BOQ directly into the right-panel calculation state
+      setCalculationResult({
+        materials: parsed.materials,
+        labor: parsed.labor,
+        marginPercentage: parsed.marginPercentage,
+        customerName: parsed.customerName,
+        metrics: parsed.metrics
+      });
+
+      // Format a detailed system notice so the AI agent is aware of all computed values
+      const m = parsed.metrics;
+      const warningsBlock = parsed.warnings?.length
+        ? `\n⚠️ SYSTEM WARNINGS:\n${parsed.warnings.map((w: string) => `  • ${w}`).join('\n')}`
+        : '';
+
+      const totalMat = parsed.materials?.reduce((acc: number, item: any) => acc + item.quantity * item.unitPrice, 0) || 0;
+      const totalLab = parsed.labor?.reduce((acc: number, item: any) => acc + item.hours * item.hourlyRate, 0) || 0;
+      const grandTotalXAF = (totalMat + totalLab) * (1 + (parsed.marginPercentage || 15) / 100);
+
+      const systemNoticeText = `[SYSTEM NOTICE: Ingestion of Tollgate load profiles complete for "${parsed.customerName}".
+
+📊 BUILDING AGGREGATION METRICS:
+  • Apartments Parsed: ${m?.apartmentCount ?? '?'}
+  • Total Devices: ${m?.totalDeviceCount ?? '?'}
+  • Peak Load: ${m?.peakKW?.toFixed(2) ?? '?'} kW
+  • Day Consumption: ${m?.dayConsumptionKWh?.toFixed(2) ?? '?'} kWh
+  • Night Consumption: ${m?.nightConsumptionKWh?.toFixed(2) ?? '?'} kWh
+
+📦 SELECTED BOQ (${parsed.materials?.length ?? 0} line items):
+${parsed.materials?.map((item: any) => `  • ${item.name} — Qty: ${item.quantity} @ ${item.unitPrice.toLocaleString()} XAF`).join('\n') ?? ''}
+
+🛠️ LABOR COST RULE: Labor = 30% of total equipment cost.
+  • Equipment Subtotal: ${totalMat.toLocaleString()} XAF
+  • Labor (30%): ${totalLab.toLocaleString()} XAF
+
+💰 FINANCIAL SUMMARY:
+  • Materials Subtotal: ${totalMat.toLocaleString()} XAF
+  • Labor Subtotal (30% of Equipment): ${totalLab.toLocaleString()} XAF
+  • Margin: ${parsed.marginPercentage}%
+  • GRAND TOTAL: ${grandTotalXAF.toLocaleString(undefined, { maximumFractionDigits: 0 })} XAF${warningsBlock}
+
+The right-panel estimation dashboard has been auto-populated. You can now answer follow-up questions, adjust margins, or generate the Excel report.]`;
+
+      const systemNoticeMsg: UIMessage = {
+        id: 'solar-ingestion-' + Date.now(),
+        role: 'user',
+        parts: [{ type: 'text', text: systemNoticeText }]
+      };
+
+      setMessages((prev) => [...prev, systemNoticeMsg]);
+      setUploadStatus(`✅ Parsed ${m?.apartmentCount ?? 0} apartments · ${m?.totalDeviceCount ?? 0} devices · ${m?.peakKW?.toFixed(1) ?? '?'} kW peak. Right panel updated!`);
+    } catch (err: any) {
+      console.error('File ingestion error:', err);
+      setUploadStatus(`❌ Connection error: ${err.message}`);
+    }
   };
 
   // Triggered when form is submitted
@@ -218,94 +274,7 @@ export default function EstimatorDashboard() {
           </div>
 
           <div className="border-b border-slate-850" />
-
-          {/* 💬 AI COPILOT CHAT STREAM */}
-          <div className="space-y-4">
-            <h2 className="text-xs font-semibold text-slate-300 tracking-wider uppercase flex items-center">
-              <svg className="w-4 h-4 text-emerald-400 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-              </svg>
-              2. Estimation AI Copilot
-            </h2>
-            
-            <div className="space-y-4 max-h-[35vh] overflow-y-auto pr-2 min-h-[160px] flex flex-col justify-end bg-slate-950/30 rounded-xl p-3 border border-slate-850">
-              {visibleMessages.length === 0 ? (
-                <div className="h-full flex flex-col justify-center items-center py-6 text-center text-slate-500 space-y-2">
-                  <svg className="w-8 h-8 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                  <p className="text-xs">No active chat telemetry.</p>
-                  <p className="text-[10px] text-slate-600">State standard metrics or trigger standard calculation rules.</p>
-                </div>
-              ) : (
-                visibleMessages.map((m) => {
-                  const text = getMessageTextContent(m);
-                  const isUser = m.role === 'user';
-                  return (
-                    <div 
-                      key={m.id} 
-                      className={`flex flex-col max-w-[85%] rounded-2xl p-3.5 transition-all duration-300 border ${
-                        isUser 
-                          ? 'self-end bg-slate-800 border-slate-750 text-slate-200 rounded-br-none shadow-[0_4px_12px_rgba(0,0,0,0.1)]' 
-                          : 'self-start bg-slate-950/60 border-slate-800/80 text-slate-300 rounded-bl-none shadow-[0_4px_16px_rgba(0,0,0,0.2)]'
-                      }`}
-                    >
-                      <span className={`text-[10px] font-mono tracking-wider uppercase mb-1 ${isUser ? 'text-slate-400' : 'text-emerald-400 font-semibold'}`}>
-                        {isUser ? 'Operator' : 'AI Estimate Copilot'}
-                      </span>
-                      <p className="text-xs leading-relaxed whitespace-pre-wrap font-sans">{text}</p>
-                    </div>
-                  );
-                })
-              )}
-              {status === 'submitted' && (
-                <div className="self-start bg-slate-950/40 border border-slate-850 text-slate-400 text-xs rounded-xl rounded-bl-none p-3 flex items-center space-x-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  <span>Thinking...</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* PROMPT INPUT & SUGGESTED PILLS */}
-        <div className="mt-6 space-y-4">
-          {/* Quick Suggestions */}
-          <div className="flex flex-wrap gap-1.5">
-            <button 
-              onClick={() => handleSuggestionClick("Generate solar estimate with standard margins")}
-              className="text-[10px] bg-slate-800/60 hover:bg-slate-800 border border-slate-750 hover:border-emerald-500/20 text-slate-300 px-2.5 py-1 rounded-full transition cursor-pointer"
-            >
-              🚀 Compute Standard Margin
-            </button>
-            <button 
-              onClick={() => handleSuggestionClick("Add 10% difficulty adjustment for steep roof setup")}
-              className="text-[10px] bg-slate-800/60 hover:bg-slate-800 border border-slate-750 hover:border-emerald-500/20 text-slate-300 px-2.5 py-1 rounded-full transition cursor-pointer"
-            >
-              🧗 Add Steep Roof +10%
-            </button>
-            <button 
-              onClick={() => handleSuggestionClick("Set technician custom rate to $50/hr")}
-              className="text-[10px] bg-slate-800/60 hover:bg-slate-800 border border-slate-750 hover:border-emerald-500/20 text-slate-300 px-2.5 py-1 rounded-full transition cursor-pointer"
-            >
-              🔧 Override Labor $50/hr
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <input
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder={fieldStudyFile ? "Copilot ready! Enter custom labor tasks or press 'Compute'..." : "Sync files first or type installation properties..."}
-              className="flex-1 p-3 text-xs bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 placeholder-slate-600 transition"
-            />
-            <button 
-              type="submit" 
-              className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 rounded-xl font-bold text-xs transition duration-200 shadow-md shadow-emerald-700/10 active:scale-95"
-            >
-              Send
-            </button>
-          </form>
+          
         </div>
       </div>
 
@@ -319,10 +288,10 @@ export default function EstimatorDashboard() {
               <div className="flex justify-between items-center">
                 <h3 className="text-sm font-bold tracking-wider text-slate-200 uppercase flex items-center">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 mr-2 shadow-[0_0_10px_rgba(52,211,153,0.5)]" />
-                  Calculation Approvals (Preview)
+                  {calculationResult.customerName ? `${calculationResult.customerName} — BOQ` : 'Calculation Approvals (Preview)'}
                 </h3>
                 <span className="text-[10px] font-mono text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded bg-emerald-500/5">
-                  100% Precision Verified
+                  {calculationResult.metrics ? `${calculationResult.metrics.apartmentCount} Apts` : '100% Verified'}
                 </span>
               </div>
 
@@ -381,8 +350,8 @@ export default function EstimatorDashboard() {
                           <tr key={idx} className="hover:bg-slate-800/30 text-slate-300">
                             <td className="py-2 px-3 truncate max-w-[160px] text-left">{m.name}</td>
                             <td className="py-2 px-3 text-right">{m.quantity}</td>
-                            <td className="py-2 px-3 text-right">${m.unitPrice.toFixed(2)}</td>
-                            <td className="py-2 px-3 text-right text-emerald-400/90">${(m.quantity * m.unitPrice).toFixed(2)}</td>
+                            <td className="py-2 px-3 text-right">{m.unitPrice.toLocaleString()} XAF</td>
+                            <td className="py-2 px-3 text-right text-emerald-400/90">{(m.quantity * m.unitPrice).toLocaleString()} XAF</td>
                           </tr>
                         ))}
 
@@ -395,9 +364,9 @@ export default function EstimatorDashboard() {
                         {calculationResult.labor?.map((l: any, idx: number) => (
                           <tr key={idx} className="hover:bg-slate-800/30 text-slate-300">
                             <td className="py-2 px-3 truncate max-w-[160px] text-left">{l.description}</td>
-                            <td className="py-2 px-3 text-right">{l.hours}</td>
-                            <td className="py-2 px-3 text-right">${l.hourlyRate.toFixed(2)}</td>
-                            <td className="py-2 px-3 text-right text-emerald-400/90">${(l.hours * l.hourlyRate).toFixed(2)}</td>
+                            <td className="py-2 px-3 text-right text-slate-500 italic text-[10px]">30% of Equipment</td>
+                            <td className="py-2 px-3 text-right text-slate-500 italic text-[10px]">Flat Rate</td>
+                            <td className="py-2 px-3 text-right text-emerald-400/90">{l.hourlyRate.toLocaleString()} XAF</td>
                           </tr>
                         ))}
                       </tbody>
@@ -406,15 +375,33 @@ export default function EstimatorDashboard() {
                 </div>
               </div>
 
+              {/* Solar Metrics Banner - only shown when parsed from ingestion engine */}
+              {calculationResult.metrics && (
+                <div className="grid grid-cols-3 gap-2 mb-1">
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-lg p-2.5 text-center">
+                    <span className="text-[9px] text-slate-500 uppercase tracking-wider block">Peak Load</span>
+                    <span className="text-sm font-bold text-amber-400">{calculationResult.metrics.peakKW?.toFixed(1)} kW</span>
+                  </div>
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-lg p-2.5 text-center">
+                    <span className="text-[9px] text-slate-500 uppercase tracking-wider block">Day kWh</span>
+                    <span className="text-sm font-bold text-sky-400">{calculationResult.metrics.dayConsumptionKWh?.toFixed(1)}</span>
+                  </div>
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-lg p-2.5 text-center">
+                    <span className="text-[9px] text-slate-500 uppercase tracking-wider block">Night kWh</span>
+                    <span className="text-sm font-bold text-violet-400">{calculationResult.metrics.nightConsumptionKWh?.toFixed(1)}</span>
+                  </div>
+                </div>
+              )}
+
               {/* Glowing Grand Totals Board */}
               <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-slate-900 to-emerald-950/20 p-4 space-y-2.5 shadow-md shadow-emerald-950/10">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-400">Materials Subtotal</span>
-                  <span className="font-mono text-slate-300">${materialsSubtotal.toFixed(2)}</span>
+                  <span className="font-mono text-slate-300">{materialsSubtotal.toLocaleString()} XAF</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-400">Labor Subtotal</span>
-                  <span className="font-mono text-slate-300">${laborSubtotal.toFixed(2)}</span>
+                  <span className="font-mono text-slate-300">{laborSubtotal.toLocaleString()} XAF</span>
                 </div>
                 <div className="border-t border-slate-800 my-2" />
                 <div className="flex justify-between items-center">
@@ -422,8 +409,8 @@ export default function EstimatorDashboard() {
                     <span className="text-xs font-semibold text-slate-300 uppercase block">Grand Total</span>
                     <span className="text-[10px] text-emerald-400 font-medium">Including {calculationResult.marginPercentage || 15}% Markup</span>
                   </div>
-                  <span className="text-2xl font-bold font-mono text-emerald-400 shadow-emerald-400/10">
-                    ${grandTotal.toFixed(2)}
+                  <span className="text-xl font-bold font-mono text-emerald-400 shadow-emerald-400/10">
+                    {grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} XAF
                   </span>
                 </div>
               </div>
