@@ -243,10 +243,11 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
   const grandTotal = materialsSubtotal + laborSubtotal;
 
   return (
-    <div className="flex h-screen bg-slate-950 font-sans text-slate-100 overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-screen bg-slate-950 font-sans text-slate-100 overflow-hidden">
       {/* LEFT PANEL: File Ingestion & AI Agent Workspace */}
-      <div className="w-[55%] flex flex-col justify-between border-r border-slate-800 bg-slate-900 p-6 overflow-y-auto">
-        <div className="space-y-6">
+      <div className="w-full max-h-[60vh] lg:max-h-none lg:w-[55%] flex flex-col border-b lg:border-b-0 lg:border-r border-slate-800 bg-slate-900 overflow-hidden">
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 min-h-0">
           {/* Header & Logo */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -285,7 +286,7 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
               1. Project Document Ingestion
             </h2>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Field Study Upload */}
               <div className="group relative flex flex-col justify-center rounded-xl border border-dashed border-slate-800 hover:border-emerald-500/40 bg-slate-900/50 p-4 transition-all duration-300">
                 <label className="text-xs font-medium text-slate-400 mb-2">Field Study Excel</label>
@@ -380,21 +381,100 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
           </div>
 
           <div className="border-b border-slate-850" />
-          
+
+          {/* AI Chat Messages */}
+          {visibleMessages.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold text-slate-400 tracking-wide uppercase">AI Agent Conversation</h4>
+              <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1">
+                {visibleMessages.map((m) => (
+                  <div
+                    key={m.id}
+                    className={`flex ${
+                      m.role === 'user' ? 'justify-end' : 'justify-start'
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-xs leading-relaxed ${
+                        m.role === 'user'
+                          ? 'bg-emerald-600/20 border border-emerald-500/20 text-emerald-100'
+                          : 'bg-slate-800/80 border border-slate-700/60 text-slate-300'
+                      }`}
+                    >
+                      {getMessageTextContent(m)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Quick Suggestion Pills */}
+          {visibleMessages.length === 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Quick Actions</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  'Summarise the estimate',
+                  'What is the grand total?',
+                  'Explain inverter selection',
+                  'Generate Excel report',
+                ].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => handleSuggestionClick(s)}
+                    className="text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800/60 text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300 hover:bg-emerald-500/5 transition-all duration-200"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* Chat Input — pinned to bottom of left panel */}
+        <div className="flex-shrink-0 p-4 sm:p-6 border-t border-slate-800 bg-slate-900">
+          <form onSubmit={handleSubmit} className="flex items-center space-x-2">
+            <input
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder={status === 'streaming' ? 'AI is thinking…' : 'Ask the AI agent anything…'}
+              disabled={status === 'streaming'}
+              className="flex-1 min-w-0 bg-slate-950 border border-slate-800 focus:border-emerald-500/50 rounded-xl px-3 py-2.5 text-xs text-slate-100 placeholder-slate-600 outline-none transition-all disabled:opacity-50"
+            />
+            <button
+              type="submit"
+              disabled={status === 'streaming' || !inputText.trim()}
+              className="flex-shrink-0 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-3.5 py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center"
+            >
+              {status === 'streaming' ? (
+                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              )}
+            </button>
+          </form>
         </div>
       </div>
 
       {/* RIGHT PANEL: Dynamic Ingestion Review & Excel Compilation Engine */}
-      <div className="w-[45%] flex flex-col bg-slate-950 p-6 overflow-y-auto">
+      <div className="w-full lg:w-[45%] flex flex-col bg-slate-950 overflow-y-auto p-4 sm:p-6">
         {calculationResult ? (
-          <div className="flex flex-col h-full justify-between space-y-6">
+          <div className="flex flex-col justify-between space-y-6">
             
             {/* COMPILATION METRICS SECTION */}
             <div className="space-y-6">
               <div className="flex justify-between items-center">
-                <h3 className="text-sm font-bold tracking-wider text-slate-200 uppercase flex items-center">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 mr-2 shadow-[0_0_10px_rgba(52,211,153,0.5)]" />
-                  {calculationResult.customerName ? `${calculationResult.customerName} — BOQ` : 'Calculation Approvals (Preview)'}
+                <h3 className="text-sm font-bold tracking-wider text-slate-200 uppercase flex items-center min-w-0 truncate">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 mr-2 flex-shrink-0 shadow-[0_0_10px_rgba(52,211,153,0.5)]" />
+                  <span className="truncate">{calculationResult.customerName ? `${calculationResult.customerName} — BOQ` : 'Calculation Approvals (Preview)'}</span>
                 </h3>
                 <span className="text-[10px] font-mono text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded bg-emerald-500/5">
                   {calculationResult.metrics ? `${calculationResult.metrics.apartmentCount} Apts` : '100% Verified'}
@@ -512,12 +592,12 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                   <span className="font-mono text-slate-300">{laborSubtotal.toLocaleString()} XAF</span>
                 </div>
                 <div className="border-t border-slate-800 my-2" />
-                <div className="flex justify-between items-center">
+                <div className="flex flex-wrap justify-between items-end gap-2">
                   <div>
                     <span className="text-xs font-semibold text-slate-300 uppercase block">Grand Total</span>
-                    <span className="text-[10px] text-slate-500 font-medium">Direct Materials & Labor</span>
+                    <span className="text-[10px] text-slate-500 font-medium">Direct Materials &amp; Labor</span>
                   </div>
-                  <span className="text-xl font-bold font-mono text-emerald-400 shadow-emerald-400/10">
+                  <span className="text-xl font-bold font-mono text-emerald-400 break-all text-right">
                     {grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} XAF
                   </span>
                 </div>
@@ -562,11 +642,11 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
             </p>
             
             {/* Visual workflow step helper */}
-            <div className="mt-8 flex items-center space-x-2 text-[10px] text-slate-650 bg-slate-900/30 px-4 py-2.5 rounded-xl border border-slate-900">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10px] text-slate-500 bg-slate-900/30 px-4 py-2.5 rounded-xl border border-slate-900">
               <span>Ingest Sheets</span>
-              <span>➡️</span>
+              <span className="text-slate-700">➡️</span>
               <span>Synchronize Context</span>
-              <span>➡️</span>
+              <span className="text-slate-700">➡️</span>
               <span className="text-emerald-500/70 font-semibold">Compile Estimates</span>
             </div>
           </div>
@@ -652,7 +732,7 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
 
       {/* 📖 HELP MODAL — System Requirements & Calculation Guide */}
       {helpModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-end bg-slate-950/70 backdrop-blur-sm p-4" onClick={() => setHelpModalOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center sm:items-start sm:justify-end bg-slate-950/70 backdrop-blur-sm p-4" onClick={() => setHelpModalOpen(false)}>
           <div
             className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl border border-slate-700/70 bg-slate-900/98 shadow-2xl shadow-slate-950/60 transition-all duration-300"
             onClick={(e) => e.stopPropagation()}
