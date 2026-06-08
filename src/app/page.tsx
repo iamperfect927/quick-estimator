@@ -690,19 +690,23 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                 <div className="rounded-xl border border-slate-800 bg-slate-950/50 divide-y divide-slate-800 overflow-hidden">
                   <div className="flex items-start px-3 py-2.5 space-x-3">
                     <span className="text-emerald-400 font-bold mt-0.5 flex-shrink-0">TYPE</span>
-                    <span className="text-slate-300">.xlsx or .xls (Microsoft Excel Workbook)</span>
+                    <span className="text-slate-300 break-words">.xlsx or .xls (Microsoft Excel Workbook)</span>
                   </div>
                   <div className="flex items-start px-3 py-2.5 space-x-3">
                     <span className="text-emerald-400 font-bold mt-0.5 flex-shrink-0">SHEETS</span>
-                    <span className="text-slate-300">One or more sheets named exactly as <code className="bg-slate-800 px-1 rounded text-emerald-300">01_Comsumption_profile</code>, <code className="bg-slate-800 px-1 rounded text-emerald-300">02_Comsumption_profile</code>, etc. (sequential two-digit prefix)</span>
+                    <span className="text-slate-300 break-words leading-relaxed">
+                      One or more sheets named exactly as <code className="bg-slate-800 px-1 py-0.5 rounded text-emerald-300 break-all inline-block font-mono text-[10px]">01_Comsumption_profile</code>, <code className="bg-slate-800 px-1 py-0.5 rounded text-emerald-300 break-all inline-block font-mono text-[10px]">02_Comsumption_profile</code>, etc. (sequential two-digit prefix)
+                    </span>
                   </div>
                   <div className="flex items-start px-3 py-2.5 space-x-3">
                     <span className="text-emerald-400 font-bold mt-0.5 flex-shrink-0">A1</span>
-                    <span className="text-slate-300">Must contain the customer name in the format: <code className="bg-slate-800 px-1 rounded text-emerald-300">CUSTOMER'S NAME: [Name]</code></span>
+                    <span className="text-slate-300 break-words leading-relaxed">
+                      Must contain the customer name in the format: <code className="bg-slate-800 px-1 py-0.5 rounded text-emerald-300 break-all inline-block font-mono text-[10px]">CUSTOMER'S NAME: [Name]</code>
+                    </span>
                   </div>
                   <div className="flex items-start px-3 py-2.5 space-x-3">
                     <span className="text-emerald-400 font-bold mt-0.5 flex-shrink-0">ROW 6</span>
-                    <span className="text-slate-300">Column headers row (ignored by parser)</span>
+                    <span className="text-slate-300 break-words">Column headers row (ignored by parser)</span>
                   </div>
                   <div className="px-3 py-2.5 space-y-1.5">
                     <span className="text-emerald-400 font-bold block">ROW 7+ — Device Data Columns:</span>
@@ -719,11 +723,11 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                       ].map(([col, label]) => (
                         <div key={col} className="flex items-center space-x-1.5 bg-slate-900 rounded px-2 py-1">
                           <span className="text-[10px] font-bold text-emerald-400 w-4 flex-shrink-0">{col}</span>
-                          <span className="text-slate-400">{label}</span>
+                          <span className="text-slate-400 truncate" title={label}>{label}</span>
                         </div>
                       ))}
                     </div>
-                    <p className="text-slate-500 mt-1.5 italic">Tip: If G or H columns are blank, they are auto-calculated as B × D × E (or F).</p>
+                    <p className="text-slate-500 mt-1.5 italic break-words">Tip: If G or H columns are blank, they are auto-calculated as B × D × E (or F).</p>
                   </div>
                 </div>
               </section>
@@ -737,23 +741,25 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                 <div className="rounded-xl border border-slate-800 bg-slate-950/50 divide-y divide-slate-800 overflow-hidden">
                   <div className="flex items-start px-3 py-2.5 space-x-3">
                     <span className="text-emerald-400 font-bold mt-0.5 flex-shrink-0">TYPE</span>
-                    <span className="text-slate-300">.xlsx or .xls (Microsoft Excel Workbook)</span>
+                    <span className="text-slate-300 break-words">.xlsx or .xls (Microsoft Excel Workbook)</span>
                   </div>
                   <div className="px-3 py-2.5 space-y-2">
                     <span className="text-emerald-400 font-bold block">REQUIRED SHEETS (4 total):</span>
-                    {[
-                      { name: 'Solar inverters', color: 'bg-amber-500/10 border-amber-500/30 text-amber-400' },
-                      { name: 'Solar batteries', color: 'bg-blue-500/10 border-blue-500/30 text-blue-400' },
-                      { name: 'Solar Panels',    color: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' },
-                      { name: 'Cables',          color: 'bg-violet-500/10 border-violet-500/30 text-violet-400' },
-                    ].map(s => (
-                      <div key={s.name} className={`inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-mono mr-1.5 ${s.color}`}>{s.name}</div>
-                    ))}
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {[
+                        { name: 'Solar inverters', color: 'bg-amber-500/10 border-amber-500/30 text-amber-400' },
+                        { name: 'Solar batteries', color: 'bg-blue-500/10 border-blue-500/30 text-blue-400' },
+                        { name: 'Solar Panels',    color: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' },
+                        { name: 'Cables',          color: 'bg-violet-500/10 border-violet-500/30 text-violet-400' },
+                      ].map(s => (
+                        <div key={s.name} className={`inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-mono ${s.color}`}>{s.name}</div>
+                      ))}
+                    </div>
                   </div>
                   <div className="px-3 py-2.5 space-y-1">
                     <span className="text-emerald-400 font-bold block mb-1.5">COLUMN HEADERS (per sheet):</span>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-[10px]">
+                    <div className="overflow-x-auto scrollbar-thin">
+                      <table className="w-full text-left text-[10px] min-w-[320px]">
                         <thead>
                           <tr className="text-slate-500 border-b border-slate-800">
                             <th className="pb-1.5 pr-3 font-semibold">Header</th>
@@ -770,13 +776,13 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                           ].map(([h, a]) => (
                             <tr key={h}>
                               <td className="py-1.5 pr-3 font-mono text-emerald-300 font-semibold">{h}</td>
-                              <td className="py-1.5 text-slate-400">{a}</td>
+                              <td className="py-1.5 text-slate-400 break-words">{a}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                    <p className="text-slate-500 mt-2 italic">Headers can appear in any row within the first 15 rows. If a sheet has no parseable data, the engine uses a &ldquo;—&rdquo; placeholder.</p>
+                    <p className="text-slate-500 mt-2 italic break-words">Headers can appear in any row within the first 15 rows. If a sheet has no parseable data, the engine uses a &ldquo;—&rdquo; placeholder.</p>
                   </div>
                 </div>
               </section>
@@ -792,54 +798,54 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                   {/* Step 1 */}
                   <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2.5">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">① Load Aggregation (from Field Study)</p>
-                    <div className="space-y-1 font-mono text-[10px]">
-                      <div className="flex justify-between"><span className="text-slate-400">Peak Load (kW)</span><span className="text-emerald-300">= Σ (Power × Qty) ÷ 1000</span></div>
-                      <div className="flex justify-between"><span className="text-slate-400">Day Consumption (kWh)</span><span className="text-emerald-300">= Σ (Power × Qty × Day hrs) ÷ 1000</span></div>
-                      <div className="flex justify-between"><span className="text-slate-400">Night Consumption (kWh)</span><span className="text-emerald-300">= Σ (Power × Qty × Night hrs) ÷ 1000</span></div>
+                    <div className="space-y-2 font-mono text-[10px]">
+                      <div className="flex flex-wrap items-baseline justify-between gap-1 border-b border-slate-800 pb-1.5"><span className="text-slate-400 mr-2">Peak Load (kW)</span><span className="text-emerald-300 break-all">= Σ (Power × Qty) ÷ 1000</span></div>
+                      <div className="flex flex-wrap items-baseline justify-between gap-1 border-b border-slate-800 pb-1.5"><span className="text-slate-400 mr-2">Day Consumption (kWh)</span><span className="text-emerald-300 break-all">= Σ (Power × Qty × Day hrs) ÷ 1000</span></div>
+                      <div className="flex flex-wrap items-baseline justify-between gap-1"><span className="text-slate-400 mr-2">Night Consumption (kWh)</span><span className="text-emerald-300 break-all">= Σ (Power × Qty × Night hrs) ÷ 1000</span></div>
                     </div>
                   </div>
 
                   {/* Step 2 */}
                   <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2.5">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">② Inverter Selection</p>
-                    <p className="text-slate-400 leading-relaxed">Finds the <span className="text-white font-semibold">smallest inverter</span> in the price list whose <span className="text-emerald-400">powerKW ≥ Peak Load</span>. If no single unit is large enough, the engine stacks the largest available inverter in multiples and raises a <span className="text-amber-400">CAPACITY_OVERFLOW_WARNING</span>.</p>
+                    <p className="text-slate-400 leading-relaxed break-words">Finds the <span className="text-white font-semibold">smallest inverter</span> in the price list whose <span className="text-emerald-400">powerKW ≥ Peak Load</span>. If no single unit is large enough, the engine stacks the largest available inverter in multiples and raises a <span className="text-amber-400">CAPACITY_OVERFLOW_WARNING</span>.</p>
                   </div>
 
                   {/* Step 3 */}
                   <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2.5">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">③ Battery Sizing</p>
                     <div className="space-y-1 font-mono text-[10px] mb-1.5">
-                      <div className="flex justify-between"><span className="text-slate-400">Target Capacity</span><span className="text-emerald-300">= Night kWh × 1.20 (20% safety buffer)</span></div>
+                      <div className="flex flex-wrap items-baseline justify-between gap-1"><span className="text-slate-400 mr-2">Target Capacity</span><span className="text-emerald-300 break-all">= Night kWh × 1.20 (20% safety buffer)</span></div>
                     </div>
-                    <p className="text-slate-400 leading-relaxed">Selects the <span className="text-white font-semibold">smallest battery</span> covering the target, prioritising <span className="text-blue-400">Lithium</span> over Gel. If no single unit covers it, stacks multiples in parallel.</p>
+                    <p className="text-slate-400 leading-relaxed break-words">Selects the <span className="text-white font-semibold">smallest battery</span> covering the target, prioritising <span className="text-blue-400">Lithium</span> over Gel. If no single unit covers it, stacks multiples in parallel.</p>
                   </div>
 
                   {/* Step 4 */}
                   <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2.5">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">④ Solar Panel Array</p>
-                    <div className="space-y-1 font-mono text-[10px] mb-1.5">
-                      <div className="flex justify-between"><span className="text-slate-400">Daily Output / panel</span><span className="text-emerald-300">= Power(W) × 5 peak sun hrs ÷ 1000</span></div>
-                      <div className="flex justify-between"><span className="text-slate-400">Panel Count</span><span className="text-emerald-300">= ⌈ Day kWh ÷ Daily Output ⌉</span></div>
+                    <div className="space-y-2 font-mono text-[10px] mb-1.5">
+                      <div className="flex flex-wrap items-baseline justify-between gap-1 border-b border-slate-800 pb-1.5"><span className="text-slate-400 mr-2">Daily Output / panel</span><span className="text-emerald-300 break-all">= Power(W) × 5 peak sun hrs ÷ 1000</span></div>
+                      <div className="flex flex-wrap items-baseline justify-between gap-1"><span className="text-slate-400 mr-2">Panel Count</span><span className="text-emerald-300 break-all">= ⌈ Day kWh ÷ Daily Output ⌉</span></div>
                     </div>
-                    <p className="text-slate-400 leading-relaxed">Always picks the <span className="text-white font-semibold">highest-efficiency panel</span> in the price list to minimise roof footprint. A warning fires if the array count exceeds 80 panels.</p>
+                    <p className="text-slate-400 leading-relaxed break-words">Always picks the <span className="text-white font-semibold">highest-efficiency panel</span> in the price list to minimise roof footprint. A warning fires if the array count exceeds 80 panels.</p>
                   </div>
 
                   {/* Step 5 */}
                   <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2.5">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">⑤ Cable Sizing</p>
-                    <div className="space-y-1 font-mono text-[10px] mb-1.5">
-                      <div className="flex justify-between"><span className="text-slate-400">Total Amperage</span><span className="text-emerald-300">= Inverter A × Inverter Qty</span></div>
-                      <div className="flex justify-between"><span className="text-slate-400">Cable Metres</span><span className="text-emerald-300">= 50 + (Panel Count × 2)</span></div>
+                    <div className="space-y-2 font-mono text-[10px] mb-1.5">
+                      <div className="flex flex-wrap items-baseline justify-between gap-1 border-b border-slate-800 pb-1.5"><span className="text-slate-400 mr-2">Total Amperage</span><span className="text-emerald-300 break-all">= Inverter A × Inverter Qty</span></div>
+                      <div className="flex flex-wrap items-baseline justify-between gap-1"><span className="text-slate-400 mr-2">Cable Metres</span><span className="text-emerald-300 break-all">= 50 + (Panel Count × 2)</span></div>
                     </div>
-                    <p className="text-slate-400 leading-relaxed">Selects the <span className="text-white font-semibold">cheapest cable</span> whose maxAmperage covers total amperage. If no amperage column exists, rating is inferred from the cable cross-section (mm²).</p>
+                    <p className="text-slate-400 leading-relaxed break-words">Selects the <span className="text-white font-semibold">cheapest cable</span> whose maxAmperage covers total amperage. If no amperage column exists, rating is inferred from the cable cross-section (mm²).</p>
                   </div>
 
                   {/* Step 6 */}
                   <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2.5">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">⑥ Labor & Grand Total</p>
-                    <div className="space-y-1 font-mono text-[10px]">
-                      <div className="flex justify-between"><span className="text-slate-400">Labor Cost</span><span className="text-emerald-300">= Materials Subtotal × 30%</span></div>
-                      <div className="flex justify-between font-bold"><span className="text-white">Grand Total</span><span className="text-emerald-400">= Materials + Labor</span></div>
+                    <div className="space-y-2 font-mono text-[10px]">
+                      <div className="flex flex-wrap items-baseline justify-between gap-1 border-b border-slate-800 pb-1.5"><span className="text-slate-400 mr-2">Labor Cost</span><span className="text-emerald-300 break-all">= Materials Subtotal × 30%</span></div>
+                      <div className="flex flex-wrap items-baseline justify-between gap-1 font-bold"><span className="text-white mr-2">Grand Total</span><span className="text-emerald-400 break-all">= Materials + Labor</span></div>
                     </div>
                   </div>
 
@@ -847,9 +853,9 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
               </section>
 
               {/* Footer */}
-              <div className="flex items-center space-x-2 text-[10px] text-slate-600 border-t border-slate-800 pt-3">
-                <svg className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <span>All monetary values are in <strong className="text-slate-400">XAF (Central African Franc)</strong>. Upload new price list to update rates at any time without code changes.</span>
+              <div className="flex items-start space-x-2 text-[10px] text-slate-600 border-t border-slate-800 pt-3">
+                <svg className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span className="leading-relaxed">All monetary values are in <strong className="text-slate-400">XAF (Central African Franc)</strong>. Upload new price list to update rates at any time.</span>
               </div>
 
             </div>
