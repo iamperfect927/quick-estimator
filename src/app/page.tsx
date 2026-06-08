@@ -432,10 +432,8 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
             </div>
           )}
 
-        </div>
-
-        {/* Chat Input — pinned to bottom of left panel */}
-        <div className="flex-shrink-0 p-4 sm:p-6 border-t border-slate-800 bg-slate-900">
+          {/* Chat Input */}
+          <div className="border-t border-slate-800 pt-4">
           <form onSubmit={handleSubmit} className="flex items-center space-x-2">
             <input
               value={inputText}
@@ -461,6 +459,8 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
               )}
             </button>
           </form>
+          </div>
+
         </div>
       </div>
 
