@@ -39,6 +39,12 @@ export default function EstimatorDashboard() {
     }
   });
 
+  console.log('[DEBUG] EstimatorDashboard render:', {
+    messagesCount: messages?.length,
+    status,
+    hasSendMessage: typeof sendMessage === 'function',
+  });
+
   // Handle file selection
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>, type: 'field' | 'price') => {
     if (e.target.files && e.target.files[0]) {
@@ -187,16 +193,32 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
   };
 
   // Triggered when form is submitted
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
-    sendMessage({ text: inputText });
-    setInputText('');
+    console.log('[DEBUG] handleSubmit called with:', inputText);
+    try {
+      const p = sendMessage({ text: inputText });
+      console.log('[DEBUG] sendMessage returned:', p);
+      await p;
+      console.log('[DEBUG] sendMessage finished successfully.');
+      setInputText('');
+    } catch (err) {
+      console.error('[DEBUG] sendMessage caught error in handleSubmit:', err);
+    }
   };
 
   // Triggered when a quick suggestion pill is clicked
-  const handleSuggestionClick = (suggestionText: string) => {
-    sendMessage({ text: suggestionText });
+  const handleSuggestionClick = async (suggestionText: string) => {
+    console.log('[DEBUG] handleSuggestionClick called with:', suggestionText);
+    try {
+      const p = sendMessage({ text: suggestionText });
+      console.log('[DEBUG] sendMessage returned (suggestion):', p);
+      await p;
+      console.log('[DEBUG] sendMessage finished successfully (suggestion).');
+    } catch (err) {
+      console.error('[DEBUG] sendMessage caught error in handleSuggestionClick:', err);
+    }
   };
 
   const downloadExcel = async () => {
