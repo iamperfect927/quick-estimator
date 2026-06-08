@@ -10,6 +10,14 @@ export interface LaborTask {
   hourlyRate: number;
 }
 
+export interface ApartmentSummary {
+  name: string;
+  peakKW: number;
+  dayConsumptionKWh: number;
+  nightConsumptionKWh: number;
+  deviceCount: number;
+}
+
 export interface CalculationInput {
   materials: Material[];
   labor: LaborTask[];
@@ -22,4 +30,6 @@ export interface CalculationInput {
     apartmentCount?: number;
     totalDeviceCount?: number;
   };
-}
+  apartments?: ApartmentSummary[];
+}
+

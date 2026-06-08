@@ -21,14 +21,20 @@ export default function EstimatorDashboard() {
   const [driveUrlInput, setDriveUrlInput] = useState('');
   const [driveLoading, setDriveLoading] = useState(false);
   const [driveError, setDriveError] = useState('');
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
 
   // Initializing useChat with DefaultChatTransport for custom endpoint and onToolCall handler
   const { messages, sendMessage, setMessages, status } = useChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
     onToolCall({ toolCall }) {
       if (toolCall.toolName === 'calculateEstimate') {
-        // In AI SDK v6, the arguments are passed as `input` instead of `args`
-        setCalculationResult(toolCall.input as any);
+        const input = toolCall.input as any;
+        setCalculationResult((prev: any) => ({
+          ...input,
+          customerName: input.customerName || prev?.customerName,
+          metrics: input.metrics || prev?.metrics,
+          apartments: input.apartments || prev?.apartments
+        }));
       }
     }
   });
@@ -129,7 +135,8 @@ export default function EstimatorDashboard() {
         labor: parsed.labor,
         marginPercentage: parsed.marginPercentage,
         customerName: parsed.customerName,
-        metrics: parsed.metrics
+        metrics: parsed.metrics,
+        apartments: parsed.apartments
       });
 
       // Format a detailed system notice so the AI agent is aware of all computed values
@@ -241,18 +248,33 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
       <div className="w-[55%] flex flex-col justify-between border-r border-slate-800 bg-slate-900 p-6 overflow-y-auto">
         <div className="space-y-6">
           {/* Header & Logo */}
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-              <svg className="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                <svg className="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-lg font-bold tracking-tight text-white flex items-center">
+                  Solar Estimate <span className="text-emerald-400 ml-1.5 font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-xs border border-emerald-500/20">Copilot</span>
+                </h1>
+                <p className="text-xs text-slate-400">Enterprise AI Solar Estimation Engine</p>
+              </div>
+            </div>
+
+            {/* Help Icon Button */}
+            <button
+              id="help-modal-trigger"
+              type="button"
+              onClick={() => setHelpModalOpen(true)}
+              title="System Requirements & Calculation Guide"
+              className="group flex items-center justify-center w-8 h-8 rounded-full border border-slate-700 bg-slate-800/60 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-400 transition-all duration-200 shadow-sm hover:shadow-emerald-500/10 flex-shrink-0"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-            </div>
-            <div>
-              <h1 className="text-lg font-bold tracking-tight text-white flex items-center">
-                Solar Estimate <span className="text-emerald-400 ml-1.5 font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-xs border border-emerald-500/20">Copilot</span>
-              </h1>
-              <p className="text-xs text-slate-400">Enterprise AI Solar Estimation Engine</p>
-            </div>
+            </button>
           </div>
 
           {/* 📂 DOCUMENT INGESTION DECK */}
@@ -420,7 +442,7 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                       <thead>
                         <tr className="bg-slate-900/90 text-[10px] uppercase text-slate-500 border-b border-slate-850 sticky top-0 z-10">
                           <th className="py-2.5 px-3 font-semibold">Component Description</th>
-                          <th className="py-2.5 px-3 font-semibold text-right">Qty/Hrs</th>
+                          <th className="py-2.5 px-3 font-semibold text-right">Qty</th>
                           <th className="py-2.5 px-3 font-semibold text-right">Unit Rate</th>
                           <th className="py-2.5 px-3 font-semibold text-right">Total</th>
                         </tr>
@@ -623,6 +645,213 @@ The right-panel estimation dashboard has been auto-populated. You can now answer
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 📖 HELP MODAL — System Requirements & Calculation Guide */}
+      {helpModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-end bg-slate-950/70 backdrop-blur-sm p-4" onClick={() => setHelpModalOpen(false)}>
+          <div
+            className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl border border-slate-700/70 bg-slate-900/98 shadow-2xl shadow-slate-950/60 transition-all duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Ambient glows */}
+            <div className="absolute -top-10 -right-10 w-36 h-36 bg-emerald-500/8 blur-3xl rounded-full pointer-events-none" />
+            <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-blue-500/8 blur-3xl rounded-full pointer-events-none" />
+
+            {/* Header */}
+            <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900/95 backdrop-blur-md rounded-t-2xl">
+              <div className="flex items-center space-x-2.5">
+                <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-white tracking-wide">System Guide</h2>
+                  <p className="text-[10px] text-slate-500">Requirements & Calculation Engine Reference</p>
+                </div>
+              </div>
+              <button onClick={() => setHelpModalOpen(false)} className="text-slate-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-slate-800">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="px-5 py-4 space-y-5 text-xs">
+
+              {/* ── FILE 1: Field Study ── */}
+              <section>
+                <div className="flex items-center space-x-2 mb-2.5">
+                  <span className="text-base">📋</span>
+                  <h3 className="text-xs font-bold text-slate-200 uppercase tracking-widest">File 1 — Field Study Workbook</h3>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-slate-950/50 divide-y divide-slate-800 overflow-hidden">
+                  <div className="flex items-start px-3 py-2.5 space-x-3">
+                    <span className="text-emerald-400 font-bold mt-0.5 flex-shrink-0">TYPE</span>
+                    <span className="text-slate-300">.xlsx or .xls (Microsoft Excel Workbook)</span>
+                  </div>
+                  <div className="flex items-start px-3 py-2.5 space-x-3">
+                    <span className="text-emerald-400 font-bold mt-0.5 flex-shrink-0">SHEETS</span>
+                    <span className="text-slate-300">One or more sheets named exactly as <code className="bg-slate-800 px-1 rounded text-emerald-300">01_Comsumption_profile</code>, <code className="bg-slate-800 px-1 rounded text-emerald-300">02_Comsumption_profile</code>, etc. (sequential two-digit prefix)</span>
+                  </div>
+                  <div className="flex items-start px-3 py-2.5 space-x-3">
+                    <span className="text-emerald-400 font-bold mt-0.5 flex-shrink-0">A1</span>
+                    <span className="text-slate-300">Must contain the customer name in the format: <code className="bg-slate-800 px-1 rounded text-emerald-300">CUSTOMER'S NAME: [Name]</code></span>
+                  </div>
+                  <div className="flex items-start px-3 py-2.5 space-x-3">
+                    <span className="text-emerald-400 font-bold mt-0.5 flex-shrink-0">ROW 6</span>
+                    <span className="text-slate-300">Column headers row (ignored by parser)</span>
+                  </div>
+                  <div className="px-3 py-2.5 space-y-1.5">
+                    <span className="text-emerald-400 font-bold block">ROW 7+ — Device Data Columns:</span>
+                    <div className="grid grid-cols-2 gap-1 mt-1">
+                      {[
+                        ['A', 'Device Name'],
+                        ['B', 'Power (W)'],
+                        ['C', 'Voltage (V)'],
+                        ['D', 'Quantity'],
+                        ['E', 'Day Runtime (hrs)'],
+                        ['F', 'Night Runtime (hrs)'],
+                        ['G', 'Day Consumption (Wh)'],
+                        ['H', 'Night Consumption (Wh)'],
+                      ].map(([col, label]) => (
+                        <div key={col} className="flex items-center space-x-1.5 bg-slate-900 rounded px-2 py-1">
+                          <span className="text-[10px] font-bold text-emerald-400 w-4 flex-shrink-0">{col}</span>
+                          <span className="text-slate-400">{label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-slate-500 mt-1.5 italic">Tip: If G or H columns are blank, they are auto-calculated as B × D × E (or F).</p>
+                  </div>
+                </div>
+              </section>
+
+              {/* ── FILE 2: Price List ── */}
+              <section>
+                <div className="flex items-center space-x-2 mb-2.5">
+                  <span className="text-base">💰</span>
+                  <h3 className="text-xs font-bold text-slate-200 uppercase tracking-widest">File 2 — Material Price List Workbook</h3>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-slate-950/50 divide-y divide-slate-800 overflow-hidden">
+                  <div className="flex items-start px-3 py-2.5 space-x-3">
+                    <span className="text-emerald-400 font-bold mt-0.5 flex-shrink-0">TYPE</span>
+                    <span className="text-slate-300">.xlsx or .xls (Microsoft Excel Workbook)</span>
+                  </div>
+                  <div className="px-3 py-2.5 space-y-2">
+                    <span className="text-emerald-400 font-bold block">REQUIRED SHEETS (4 total):</span>
+                    {[
+                      { name: 'Solar inverters', color: 'bg-amber-500/10 border-amber-500/30 text-amber-400' },
+                      { name: 'Solar batteries', color: 'bg-blue-500/10 border-blue-500/30 text-blue-400' },
+                      { name: 'Solar Panels',    color: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' },
+                      { name: 'Cables',          color: 'bg-violet-500/10 border-violet-500/30 text-violet-400' },
+                    ].map(s => (
+                      <div key={s.name} className={`inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-mono mr-1.5 ${s.color}`}>{s.name}</div>
+                    ))}
+                  </div>
+                  <div className="px-3 py-2.5 space-y-1">
+                    <span className="text-emerald-400 font-bold block mb-1.5">COLUMN HEADERS (per sheet):</span>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-[10px]">
+                        <thead>
+                          <tr className="text-slate-500 border-b border-slate-800">
+                            <th className="pb-1.5 pr-3 font-semibold">Header</th>
+                            <th className="pb-1.5 pr-3 font-semibold">Accepts / Aliases</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60">
+                          {[
+                            ['S/N', 'Row index — used as end-of-table sentinel'],
+                            ['Type', 'Model name / Product description / SKU'],
+                            ['Power Rating', 'kW for inverters · kWh for batteries · W for panels'],
+                            ['Brand', 'Manufacturer name'],
+                            ['Price', 'Unit cost in XAF (also accepts: cost, rate, xaf)'],
+                          ].map(([h, a]) => (
+                            <tr key={h}>
+                              <td className="py-1.5 pr-3 font-mono text-emerald-300 font-semibold">{h}</td>
+                              <td className="py-1.5 text-slate-400">{a}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-slate-500 mt-2 italic">Headers can appear in any row within the first 15 rows. If a sheet has no parseable data, the engine uses a &ldquo;—&rdquo; placeholder.</p>
+                  </div>
+                </div>
+              </section>
+
+              {/* ── Calculation Engine ── */}
+              <section>
+                <div className="flex items-center space-x-2 mb-2.5">
+                  <span className="text-base">⚙️</span>
+                  <h3 className="text-xs font-bold text-slate-200 uppercase tracking-widest">Calculation Engine Reference</h3>
+                </div>
+                <div className="space-y-2">
+
+                  {/* Step 1 */}
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2.5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">① Load Aggregation (from Field Study)</p>
+                    <div className="space-y-1 font-mono text-[10px]">
+                      <div className="flex justify-between"><span className="text-slate-400">Peak Load (kW)</span><span className="text-emerald-300">= Σ (Power × Qty) ÷ 1000</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Day Consumption (kWh)</span><span className="text-emerald-300">= Σ (Power × Qty × Day hrs) ÷ 1000</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Night Consumption (kWh)</span><span className="text-emerald-300">= Σ (Power × Qty × Night hrs) ÷ 1000</span></div>
+                    </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2.5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">② Inverter Selection</p>
+                    <p className="text-slate-400 leading-relaxed">Finds the <span className="text-white font-semibold">smallest inverter</span> in the price list whose <span className="text-emerald-400">powerKW ≥ Peak Load</span>. If no single unit is large enough, the engine stacks the largest available inverter in multiples and raises a <span className="text-amber-400">CAPACITY_OVERFLOW_WARNING</span>.</p>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2.5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">③ Battery Sizing</p>
+                    <div className="space-y-1 font-mono text-[10px] mb-1.5">
+                      <div className="flex justify-between"><span className="text-slate-400">Target Capacity</span><span className="text-emerald-300">= Night kWh × 1.20 (20% safety buffer)</span></div>
+                    </div>
+                    <p className="text-slate-400 leading-relaxed">Selects the <span className="text-white font-semibold">smallest battery</span> covering the target, prioritising <span className="text-blue-400">Lithium</span> over Gel. If no single unit covers it, stacks multiples in parallel.</p>
+                  </div>
+
+                  {/* Step 4 */}
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2.5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">④ Solar Panel Array</p>
+                    <div className="space-y-1 font-mono text-[10px] mb-1.5">
+                      <div className="flex justify-between"><span className="text-slate-400">Daily Output / panel</span><span className="text-emerald-300">= Power(W) × 5 peak sun hrs ÷ 1000</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Panel Count</span><span className="text-emerald-300">= ⌈ Day kWh ÷ Daily Output ⌉</span></div>
+                    </div>
+                    <p className="text-slate-400 leading-relaxed">Always picks the <span className="text-white font-semibold">highest-efficiency panel</span> in the price list to minimise roof footprint. A warning fires if the array count exceeds 80 panels.</p>
+                  </div>
+
+                  {/* Step 5 */}
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2.5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">⑤ Cable Sizing</p>
+                    <div className="space-y-1 font-mono text-[10px] mb-1.5">
+                      <div className="flex justify-between"><span className="text-slate-400">Total Amperage</span><span className="text-emerald-300">= Inverter A × Inverter Qty</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Cable Metres</span><span className="text-emerald-300">= 50 + (Panel Count × 2)</span></div>
+                    </div>
+                    <p className="text-slate-400 leading-relaxed">Selects the <span className="text-white font-semibold">cheapest cable</span> whose maxAmperage covers total amperage. If no amperage column exists, rating is inferred from the cable cross-section (mm²).</p>
+                  </div>
+
+                  {/* Step 6 */}
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2.5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">⑥ Labor & Grand Total</p>
+                    <div className="space-y-1 font-mono text-[10px]">
+                      <div className="flex justify-between"><span className="text-slate-400">Labor Cost</span><span className="text-emerald-300">= Materials Subtotal × 30%</span></div>
+                      <div className="flex justify-between font-bold"><span className="text-white">Grand Total</span><span className="text-emerald-400">= Materials + Labor</span></div>
+                    </div>
+                  </div>
+
+                </div>
+              </section>
+
+              {/* Footer */}
+              <div className="flex items-center space-x-2 text-[10px] text-slate-600 border-t border-slate-800 pt-3">
+                <svg className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span>All monetary values are in <strong className="text-slate-400">XAF (Central African Franc)</strong>. Upload new price list to update rates at any time without code changes.</span>
+              </div>
+
             </div>
           </div>
         </div>

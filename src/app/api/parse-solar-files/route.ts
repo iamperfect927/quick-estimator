@@ -1,6 +1,26 @@
 import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
 
+// Helper function to extract cell value, bypassing styled text / objects
+const getCellValueRaw = (cell: any): any => {
+  if (!cell || cell.value === null || cell.value === undefined) return null;
+  if (typeof cell.value === 'string' || typeof cell.value === 'number' || typeof cell.value === 'boolean') {
+    return cell.value;
+  }
+  if (typeof cell.value === 'object') {
+    if ('richText' in cell.value && Array.isArray(cell.value.richText)) {
+      return cell.value.richText.map((t: any) => t.text || '').join('');
+    }
+    if ('result' in cell.value) {
+      return cell.value.result;
+    }
+    if ('text' in cell.value) {
+      return cell.value.text;
+    }
+  }
+  return String(cell.value);
+};
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
@@ -23,6 +43,7 @@ export async function POST(req: Request) {
     let totalDayConsumptionWh = 0;
     let totalNightConsumptionWh = 0;
     let profilesParsed = 0;
+    const apartmentsData: any[] = [];
 
     for (const sheet of fieldWorkbook.worksheets) {
       // Matches sheets with names like "01_Comsumption_profile", "02_Comsumption_profile", etc.
@@ -31,6 +52,10 @@ export async function POST(req: Request) {
       if (!isMatch) continue;
 
       profilesParsed++;
+      let apartmentPeakPowerW = 0;
+      let apartmentDayConsumptionWh = 0;
+      let apartmentNightConsumptionWh = 0;
+      let apartmentDeviceCount = 0;
 
       // Extract Customer Name from cell A1: "CUSTOMER'S NAME: <Name>"
       const a1Value = sheet.getCell('A1').value;
@@ -78,157 +103,240 @@ export async function POST(req: Request) {
         totalDayConsumptionWh += consumptionDayWh;
         totalNightConsumptionWh += consumptionNightWh;
 
+        apartmentPeakPowerW += (powerWatts * quantity);
+        apartmentDayConsumptionWh += consumptionDayWh;
+        apartmentNightConsumptionWh += consumptionNightWh;
+        apartmentDeviceCount++;
+
         rowIdx++;
       }
+
+      apartmentsData.push({
+        name: sheet.name,
+        peakKW: apartmentPeakPowerW / 1000,
+        dayConsumptionKWh: apartmentDayConsumptionWh / 1000,
+        nightConsumptionKWh: apartmentNightConsumptionWh / 1000,
+        deviceCount: apartmentDeviceCount
+      });
     }
 
     if (profilesParsed === 0) {
       return NextResponse.json({ error: 'No worksheets matching sequential profile regex found' }, { status: 400 });
     }
 
+
     // 2. MATHEMATICAL AGGREGATIONS
     const peakKW = totalPeakPowerW / 1000;
     const dayConsumptionKWh = totalDayConsumptionWh / 1000;
     const nightConsumptionKWh = totalNightConsumptionWh / 1000;
 
-    // 3. DEFINE SEED HARDWARE CATALOG
-    let inverters = [
-      { brand: 'Felicity', model: 'Hybrid Inverter 30kW', powerKW: 30, priceXAF: 1500000, amperageA: 150 },
-  { brand: 'Felicity', model: 'Hybrid Inverter 25kW', powerKW: 25, priceXAF: 1300000, amperageA: 125 },
-  { brand: 'Felicity', model: 'Hybrid Inverter 15kW', powerKW: 15, priceXAF: 900000, amperageA: 75 },
-  { brand: 'Cworth',   model: 'Hybrid Inverter 10kW', powerKW: 10, priceXAF: 840000, amperageA: 50 },
-  { brand: 'Cworth',   model: 'Hybrid Inverter 5kW',  powerKW: 5,  priceXAF: 260000, amperageA: 25 },
-  { brand: 'Cworth',   model: 'Hybrid Inverter 3kW',  powerKW: 3,  priceXAF: 140000, amperageA: 15 }
-    ];
+    // 3. PARSE PRICE LIST SPREADSHEET (MANDATORY)
+    if (!priceListFile || priceListFile.size === 0) {
+      return NextResponse.json({ error: 'Missing price list file. Please upload a valid pricing sheet.' }, { status: 400 });
+    }
 
-    let batteries = [
-  { brand: 'Felicity',    model: 'Premium Lithium 30kWh', type: 'Lithium', powerKWh: 30, priceXAF: 2200000 },
-  { brand: 'Felicity',    model: 'Premium Lithium 25kWh', type: 'Lithium', powerKWh: 25, priceXAF: 1900000 },
-  { brand: 'Felicity',    model: 'Premium Lithium 15kWh', type: 'Lithium', powerKWh: 15, priceXAF: 1000000 },
-  { brand: 'Cworth',      model: 'Eco Gel 10kWh',         type: 'Gel',     powerKWh: 10, priceXAF: 940000  },
-  { brand: 'Cworth',      model: 'Eco Gel 5kWh',          type: 'Gel',     powerKWh: 5,  priceXAF: 360000  },
-  { brand: 'Cworth',      model: 'Eco Gel 3kWh',          type: 'Gel',     powerKWh: 3,  priceXAF: 240000  }
-];
+    let inverters: any[] = [];
+    let batteries: any[] = [];
+    let panels: any[] = [];
+    let cables: any[] = [];
 
-    let panels = [
-  { brand: '', model: 'Solar PV Panel 650W', powerW: 650, efficiencyPercent: 21.5, priceXAF: 70000 },
-  { brand: '', model: 'Solar PV Panel 625W', powerW: 625, efficiencyPercent: 21.0, priceXAF: 65000 },
-  { brand: '', model: 'Solar PV Panel 600W', powerW: 600, efficiencyPercent: 20.5, priceXAF: 60000 },
-  { brand: '', model: 'Solar PV Panel 580W', powerW: 580, efficiencyPercent: 20.2, priceXAF: 58000 },
-  { brand: '', model: 'Solar PV Panel 500W', powerW: 500, efficiencyPercent: 19.5, priceXAF: 55000 },
-  { brand: '', model: 'Solar PV Panel 400W', powerW: 400, efficiencyPercent: 18.0, priceXAF: 45000 }
-];
+    let sheetNames: string[] = [];
+    let debugInfo: any = {};
 
-    let cables = [
-      { spec: '4mm² DC Cable (Red/Black)', maxAmperage: 30, priceXAFPerMeter: 1200 },
-      { spec: '6mm² DC Cable (Red/Black)', maxAmperage: 55, priceXAFPerMeter: 1800 },
-      { spec: '10mm² DC Cable (Red/Black)', maxAmperage: 80, priceXAFPerMeter: 2800 },
-      { spec: '16mm² AC/DC Copper Wire', maxAmperage: 110, priceXAFPerMeter: 4500 },
-      { spec: '25mm² Heavy-Duty Power Cable', maxAmperage: 150, priceXAFPerMeter: 7500 },
-      { spec: '35mm² Heavy-Duty Power Cable', maxAmperage: 200, priceXAFPerMeter: 11000 }
-    ];
+    try {
+      const priceListBuffer = Buffer.from(await priceListFile.arrayBuffer());
+      const priceWorkbook = new ExcelJS.Workbook();
+      await priceWorkbook.xlsx.load(priceListBuffer as any);
+      sheetNames = priceWorkbook.worksheets.map((s: any) => s.name);
 
-    // 4. OPTIONALLY PARSE INGESTED PRICE LIST SPREADSHEET IF PROVIDED
-    if (priceListFile && priceListFile.size > 0) {
-      try {
-        const priceListBuffer = Buffer.from(await priceListFile.arrayBuffer());
-        const priceWorkbook = new ExcelJS.Workbook();
-        await priceWorkbook.xlsx.load(priceListBuffer as any);
+      for (const sheet of priceWorkbook.worksheets) {
+        const name = sheet.name.toLowerCase();
+        
+        let foundHeaders = false;
+        let headerRowIndex = 1;
+        let headerMapping: { [key: string]: number } = {};
 
-        for (const sheet of priceWorkbook.worksheets) {
-          const name = sheet.name.toLowerCase();
+        // Helper parser for dynamic table extraction using synonym/alias matching
+        const parseTable = (fieldMappings: { [key: string]: string[] }) => {
+          const parsedRows: any[] = [];
+          headerMapping = {};
           
-          // Helper parser for dynamic table extraction
-          const parseTable = (requiredCols: string[]) => {
-            const parsedRows: any[] = [];
-            let headerMapping: { [key: string]: number } = {};
+          // Scan top 15 rows for headers
+          foundHeaders = false;
+          headerRowIndex = 1;
+          for (let r = 1; r <= 15; r++) {
+            const row = sheet.getRow(r);
+            row.eachCell({ includeEmpty: false }, (cell, colIdx) => {
+              const text = String(getCellValueRaw(cell) || '').toLowerCase().trim();
+              for (const [field, aliases] of Object.entries(fieldMappings)) {
+                if (aliases.some(alias => text.includes(alias))) {
+                  headerMapping[field] = colIdx;
+                }
+              }
+            });
             
-            // Scan top 5 rows for headers
-            let foundHeaders = false;
-            let headerRowIndex = 1;
-            for (let r = 1; r <= 5; r++) {
-              const row = sheet.getRow(r);
-              row.eachCell((cell, colIdx) => {
-                const text = String(cell.value || '').toLowerCase().trim();
-                requiredCols.forEach(colName => {
-                  if (text.includes(colName)) {
-                    headerMapping[colName] = colIdx;
-                  }
-                });
-              });
-              
-              if (Object.keys(headerMapping).length >= requiredCols.length - 1) {
-                foundHeaders = true;
-                headerRowIndex = r;
-                break;
-              }
-            }
-
-            if (foundHeaders) {
-              for (let r = headerRowIndex + 1; r <= 100; r++) {
-                const row = sheet.getRow(r);
-                const firstColVal = row.getCell(headerMapping[requiredCols[0]] || 1).value;
-                if (!firstColVal || String(firstColVal).trim() === '') break;
-                
-                const entry: any = {};
-                requiredCols.forEach(colName => {
-                  const colIdx = headerMapping[colName];
-                  entry[colName] = colIdx ? row.getCell(colIdx).value : null;
-                });
-                parsedRows.push(entry);
-              }
-            }
-            return parsedRows;
-          };
-
-          if (name.includes('inverter')) {
-            const list = parseTable(['brand', 'model', 'power', 'price', 'amperage']);
-            if (list.length > 0) {
-              inverters = list.map(item => ({
-                brand: String(item.brand || 'Generic'),
-                model: String(item.model || 'Unknown Model'),
-                powerKW: parseFloat(item.power) || 5,
-                priceXAF: parseInt(item.price) || 500000,
-                amperageA: parseFloat(item.amperage) || 30
-              }));
-            }
-          } else if (name.includes('batter')) {
-            const list = parseTable(['brand', 'model', 'type', 'power', 'price']);
-            if (list.length > 0) {
-              batteries = list.map(item => ({
-                brand: String(item.brand || 'Generic'),
-                model: String(item.model || 'Unknown Model'),
-                type: String(item.type || 'Lithium'),
-                powerKWh: parseFloat(item.power) || 2.4,
-                priceXAF: parseInt(item.price) || 800000
-              }));
-            }
-          } else if (name.includes('panel') || name.includes('pv') || name.includes('module')) {
-            const list = parseTable(['brand', 'model', 'power', 'efficiency', 'price']);
-            if (list.length > 0) {
-              panels = list.map(item => ({
-                brand: String(item.brand || 'Generic'),
-                model: String(item.model || 'Unknown Model'),
-                powerW: parseFloat(item.power) || 550,
-                efficiencyPercent: parseFloat(item.efficiency) || 21.0,
-                priceXAF: parseInt(item.price) || 90000
-              }));
-            }
-          } else if (name.includes('cable') || name.includes('wire')) {
-            const list = parseTable(['specification', 'amperage', 'price']);
-            if (list.length > 0) {
-              cables = list.map(item => ({
-                spec: String(item.specification || 'DC Wire'),
-                maxAmperage: parseFloat(item.amperage) || 50,
-                priceXAFPerMeter: parseInt(item.price) || 1500
-              }));
+            // Require at least 2 distinct mapped columns (model/spec + price)
+            const colIndices = new Set(Object.values(headerMapping));
+            const hasModelOrSpec = !!headerMapping['model'] || !!headerMapping['spec'];
+            const hasPrice = !!headerMapping['priceXAF'] || !!headerMapping['priceXAFPerMeter'];
+            if (hasModelOrSpec && hasPrice && colIndices.size >= 2) {
+              foundHeaders = true;
+              headerRowIndex = r;
+              break;
             }
           }
+
+          if (foundHeaders) {
+            const lastRow = sheet.rowCount;
+            let consecutiveEmpty = 0;
+
+            for (let r = headerRowIndex + 1; r <= lastRow; r++) {
+              const row = sheet.getRow(r);
+
+              // Use S/N (column 1) as the primary end-of-data sentinel
+              const snVal = getCellValueRaw(row.getCell(1));
+              const keyColIdx = headerMapping['model'] || headerMapping['spec'] || 2;
+              const keyColVal = getCellValueRaw(row.getCell(keyColIdx));
+
+              // If both S/N and key column are empty, increment empty counter and skip
+              if ((!snVal || String(snVal).trim() === '') && (!keyColVal || String(keyColVal).trim() === '')) {
+                consecutiveEmpty++;
+                if (consecutiveEmpty >= 2) break; // Two consecutive blank rows = end of table
+                continue;
+              }
+              consecutiveEmpty = 0;
+
+              const entry: any = {};
+              let hasAnyMappedValue = false;
+              for (const field of Object.keys(fieldMappings)) {
+                const colIdx = headerMapping[field];
+                const val = colIdx ? getCellValueRaw(row.getCell(colIdx)) : null;
+                entry[field] = val;
+                if (val !== null && val !== undefined && String(val).trim() !== '') hasAnyMappedValue = true;
+              }
+              if (hasAnyMappedValue) parsedRows.push(entry);
+            }
+          }
+          return parsedRows;
+        };
+
+
+        if (name.includes('solar inverters') || name.includes('inverter')) {
+          const list = parseTable({
+            brand: ['brand', 'manuf', 'make'],
+            model: ['model', 'sku', 'desc', 'inverter', 'type'],
+            powerKW: ['power', 'capacity', 'kw', 'rating'],
+            priceXAF: ['price', 'cost', 'xaf', 'rate'],
+            amperageA: ['amperage', 'amp', 'current', 'maxa']
+          });
+          debugInfo[sheet.name] = { foundHeaders, headerRowIndex, headerMapping, rowsParsed: list.length };
+          if (list.length > 0) {
+            inverters = list.map(item => {
+              const powerKW = parseFloat(item.powerKW) || 5;
+              const derivedAmperage = powerKW * 5;
+              return {
+                brand: String(item.brand || 'Generic'),
+                model: String(item.model || 'Unknown Model'),
+                powerKW,
+                priceXAF: parseInt(item.priceXAF) || 500000,
+                amperageA: parseFloat(item.amperageA) || derivedAmperage || 30
+              };
+            });
+          }
+        } else if (name.includes('solar batteries') || name.includes('batter')) {
+          const list = parseTable({
+            brand: ['brand', 'manuf', 'make'],
+            model: ['model', 'sku', 'desc', 'battery', 'type'],
+            type: ['type', 'chemistry'],
+            powerKWh: ['power', 'capacity', 'kwh', 'rating'],
+            priceXAF: ['price', 'cost', 'xaf', 'rate']
+          });
+          debugInfo[sheet.name] = { foundHeaders, headerRowIndex, headerMapping, rowsParsed: list.length };
+          if (list.length > 0) {
+            batteries = list.map(item => {
+              const model = String(item.model || 'Unknown Model');
+              const rawType = String(item.type || '').toLowerCase();
+              const isLithium = rawType.includes('lith') || rawType.includes('lfp') || model.toLowerCase().includes('lith') || model.toLowerCase().includes('lfp');
+              return {
+                brand: String(item.brand || 'Generic'),
+                model,
+                type: isLithium ? 'Lithium' : 'Gel',
+                powerKWh: parseFloat(item.powerKWh) || 2.4,
+                priceXAF: parseInt(item.priceXAF) || 800000
+              };
+            });
+          }
+        } else if (name.includes('solar panels') || name.includes('panel') || name.includes('pv') || name.includes('module')) {
+          const list = parseTable({
+            brand: ['brand', 'manuf', 'make'],
+            model: ['model', 'sku', 'desc', 'panel', 'pv', 'module', 'type'],
+            powerW: ['power', 'capacity', 'w', 'watt', 'rating'],
+            efficiencyPercent: ['efficiency', 'eff', '%'],
+            priceXAF: ['price', 'cost', 'xaf', 'rate']
+          });
+          debugInfo[sheet.name] = { foundHeaders, headerRowIndex, headerMapping, rowsParsed: list.length };
+          if (list.length > 0) {
+            panels = list.map(item => {
+              const powerW = parseFloat(item.powerW) || 550;
+              const derivedEff = 15 + (powerW / 100);
+              return {
+                brand: String(item.brand || 'Generic'),
+                model: String(item.model || 'Unknown Model'),
+                powerW,
+                efficiencyPercent: parseFloat(item.efficiencyPercent) || derivedEff || 21.0,
+                priceXAF: parseInt(item.priceXAF) || 90000
+              };
+            });
+          }
+        } else if (name.includes('cables') || name.includes('cable') || name.includes('wire')) {
+          const list = parseTable({
+            spec: ['specification', 'spec', 'wire', 'cable', 'desc', 'type'],
+            maxAmperage: ['amperage', 'amp', 'current', 'maxa'],
+            priceXAFPerMeter: ['price', 'cost', 'xaf', 'meter', 'rate']
+          });
+          debugInfo[sheet.name] = { foundHeaders, headerRowIndex, headerMapping, rowsParsed: list.length };
+          if (list.length > 0) {
+            cables = list.map(item => {
+              const spec = String(item.spec || 'DC Wire');
+              let maxAmperage = 50;
+              const mmMatch = spec.match(/(\d+)\s*mm²/i);
+              if (mmMatch) {
+                const mmVal = parseInt(mmMatch[1]);
+                if (mmVal <= 4) maxAmperage = 30;
+                else if (mmVal <= 6) maxAmperage = 55;
+                else if (mmVal <= 10) maxAmperage = 80;
+                else if (mmVal <= 16) maxAmperage = 110;
+                else if (mmVal <= 25) maxAmperage = 150;
+                else if (mmVal <= 35) maxAmperage = 200;
+              }
+              return {
+                spec,
+                maxAmperage: parseFloat(item.maxAmperage) || maxAmperage,
+                priceXAFPerMeter: parseInt(item.priceXAFPerMeter) || 1500
+              };
+            });
+          }
         }
-      } catch (err) {
-        console.warn('Price list parsing warned fallback triggered:', err);
       }
+    } catch (err: any) {
+      return NextResponse.json({ error: `Failed parsing uploaded price list: ${err.message}` }, { status: 400 });
     }
+
+
+    // If a category was empty in the price list, insert a "—" placeholder item so the flow continues gracefully
+    if (inverters.length === 0) {
+      inverters = [{ brand: '—', model: '—', powerKW: 0, priceXAF: 0, amperageA: 0 }];
+    }
+    if (batteries.length === 0) {
+      batteries = [{ brand: '—', model: '—', type: 'Unknown', powerKWh: 0, priceXAF: 0 }];
+    }
+    if (panels.length === 0) {
+      panels = [{ brand: '—', model: '—', powerW: 0, efficiencyPercent: 0, priceXAF: 0 }];
+    }
+    if (cables.length === 0) {
+      cables = [{ spec: '—', maxAmperage: 0, priceXAFPerMeter: 0 }];
+    }
+
 
     const boq: any[] = [];
     const warnings: string[] = [];
@@ -373,6 +481,7 @@ export async function POST(req: Request) {
       materials,
       labor,
       marginPercentage: 0,
+      apartments: apartmentsData,
       warnings
     });
   } catch (err: any) {

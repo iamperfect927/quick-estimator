@@ -3,18 +3,6 @@ import { CalculationInput } from '@/app/types/estimation';
 
 export async function generateEstimateExcel(data: CalculationInput): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet('Solar Cost Estimate');
-
-  // Set grid lines visibility setting
-  sheet.views = [{ showGridLines: true }];
-
-  // Column definitions & widths
-  sheet.columns = [
-    { key: 'desc', width: 70 },
-    { key: 'qty', width: 25 },
-    { key: 'rate', width: 35 },
-    { key: 'total', width: 35 }
-  ];
 
   // Helper colors
   const emeraldGreen = '059669'; // Primary Accent
@@ -29,6 +17,193 @@ export async function generateEstimateExcel(data: CalculationInput): Promise<Buf
     left: { style: 'thin' as const, color: { argb: 'FF' + borderGray } },
     right: { style: 'thin' as const, color: { argb: 'FF' + borderGray } }
   };
+
+  // Load corporate logo ID once if exists
+  let logoId: number | null = null;
+  try {
+    const path = require('path');
+    const logoPath = path.join(process.cwd(), 'public/solar_logo.png');
+    logoId = workbook.addImage({
+      filename: logoPath,
+      extension: 'png',
+    });
+  } catch (err) {
+    console.error('Failed to load logo image:', err);
+  }
+
+  // ─── SHEET 1: SUMMARY ───
+  const summarySheet = workbook.addWorksheet('Summary');
+  summarySheet.views = [{ showGridLines: true }];
+
+  summarySheet.columns = [
+    { key: 'name', width: 35 },
+    { key: 'devices', width: 20 },
+    { key: 'peak', width: 25 },
+    { key: 'day', width: 30 },
+    { key: 'night', width: 30 }
+  ];
+
+  // Brand Logo Block on Summary
+  summarySheet.getRow(1).height = 25;
+  summarySheet.getRow(2).height = 25;
+
+  for (let r = 1; r <= 2; r++) {
+    const cell = summarySheet.getCell(`A${r}`);
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + emeraldGreen } };
+  }
+
+  summarySheet.mergeCells('B1:E2');
+  const sumLogoCell = summarySheet.getCell('B1');
+  sumLogoCell.value = 'BLUE FRAMES SOLAR ESTIMATE — SUMMARY';
+  sumLogoCell.font = { name: 'Segoe UI', size: 15, bold: true, color: { argb: 'FFFFFFFF' } };
+  sumLogoCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + emeraldGreen } };
+  sumLogoCell.alignment = { vertical: 'middle', horizontal: 'left' };
+
+  if (logoId !== null) {
+    summarySheet.addImage(logoId, {
+      tl: { col: 0.1, row: 0.15 },
+      br: { col: 0.9, row: 1.85 },
+      editAs: 'oneCell'
+    } as any);
+  }
+
+  // Project Title on Summary
+  summarySheet.mergeCells('A3:E3');
+  const sumSubtitleCell = summarySheet.getCell('A3');
+  sumSubtitleCell.value = data.customerName
+    ? `${data.customerName.toUpperCase()} — PROJECT WORKLOAD SUMMARY`
+    : 'PROJECT WORKLOAD SUMMARY';
+  sumSubtitleCell.font = { name: 'Segoe UI', size: 9, bold: true, italic: true, color: { argb: 'FF94A3B8' } };
+  sumSubtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + slateDark } };
+  sumSubtitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+  summarySheet.getRow(3).height = 20;
+
+  summarySheet.addRow([]); // Row 4 spacer
+  const sumHeaderRow = summarySheet.addRow(['INDIVIDUAL APARTMENTS/LOAD PROFILES SUMMARY']);
+  summarySheet.mergeCells(`A${sumHeaderRow.number}:E${sumHeaderRow.number}`);
+  const sumCell = sumHeaderRow.getCell(1);
+  sumCell.font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF' + emeraldGreen } };
+  sumHeaderRow.height = 24;
+  sumCell.border = { bottom: { style: 'medium' as const, color: { argb: 'FF' + emeraldGreen } } };
+  summarySheet.addRow([]); // space
+
+  // Table Headers
+  const sumTableHeaders = summarySheet.addRow([
+    'Apartment / Consumption Profile',
+    'Device Count',
+    'Peak Load (kW)',
+    'Day Consumption (kWh)',
+    'Night Consumption (kWh)'
+  ]);
+  sumTableHeaders.height = 24;
+  sumTableHeaders.eachCell((cell, colNum) => {
+    cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + slateDark } };
+    cell.alignment = { 
+      vertical: 'middle', 
+      horizontal: colNum === 1 ? 'left' : 'center' 
+    };
+    cell.border = thinBorder;
+  });
+
+  const apartments = data.apartments || [];
+  if (apartments.length > 0) {
+    apartments.forEach((ap, idx) => {
+      const row = summarySheet.addRow([
+        ap.name,
+        ap.deviceCount,
+        ap.peakKW,
+        ap.dayConsumptionKWh,
+        ap.nightConsumptionKWh
+      ]);
+      row.height = 20;
+      const isEven = idx % 2 === 0;
+
+      row.eachCell((cell, colNum) => {
+        cell.font = { name: 'Segoe UI', size: 10, color: { argb: 'FF334155' } };
+        cell.border = thinBorder;
+        if (isEven) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + slateLight } };
+        }
+
+        if (colNum === 1) {
+          cell.alignment = { vertical: 'middle', horizontal: 'left' };
+        } else if (colNum === 2) {
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          cell.numFmt = '#,##0';
+        } else {
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          cell.numFmt = '#,##0.00';
+        }
+      });
+    });
+
+    // Add a Total Summary Row
+    const totalDevices = apartments.reduce((sum, ap) => sum + ap.deviceCount, 0);
+    const totalPeakKW = apartments.reduce((sum, ap) => sum + ap.peakKW, 0);
+    const totalDayKWh = apartments.reduce((sum, ap) => sum + ap.dayConsumptionKWh, 0);
+    const totalNightKWh = apartments.reduce((sum, ap) => sum + ap.nightConsumptionKWh, 0);
+
+    const totalRow = summarySheet.addRow([
+      'TOTAL AGGREGATED CONSUMPTION',
+      totalDevices,
+      totalPeakKW,
+      totalDayKWh,
+      totalNightKWh
+    ]);
+    totalRow.height = 24;
+    totalRow.eachCell((cell, colNum) => {
+      cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + emeraldGreen } };
+      cell.border = thinBorder;
+
+      if (colNum === 1) {
+        cell.alignment = { vertical: 'middle', horizontal: 'left' };
+      } else if (colNum === 2) {
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.numFmt = '#,##0';
+      } else {
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.numFmt = '#,##0.00';
+      }
+    });
+  } else {
+    // Fallback if no individual apartment details are present
+    const row = summarySheet.addRow([
+      'Single Apartment Estimate (No individual profile breakdown)',
+      data.metrics?.totalDeviceCount ?? '—',
+      data.metrics?.peakKW ?? '—',
+      data.metrics?.dayConsumptionKWh ?? '—',
+      data.metrics?.nightConsumptionKWh ?? '—'
+    ]);
+    row.height = 22;
+    row.eachCell((cell, colNum) => {
+      cell.font = { name: 'Segoe UI', size: 10, color: { argb: 'FF334155' } };
+      cell.border = thinBorder;
+      if (colNum === 1) {
+        cell.alignment = { vertical: 'middle', horizontal: 'left' };
+      } else if (colNum === 2) {
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      } else {
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        if (typeof cell.value === 'number') {
+          cell.numFmt = '#,##0.00';
+        }
+      }
+    });
+  }
+
+  // ─── SHEET 2: ESTIMATE ───
+  const sheet = workbook.addWorksheet('Estimate');
+  sheet.views = [{ showGridLines: true }];
+
+  // Column definitions & widths
+  sheet.columns = [
+    { key: 'desc', width: 70 },
+    { key: 'qty', width: 25 },
+    { key: 'rate', width: 35 },
+    { key: 'total', width: 35 }
+  ];
 
   // 1. BRAND LOGO BLOCK (Logo image in A1:A2, text in merged B1:D2)
   sheet.getRow(1).height = 25;
@@ -48,22 +223,12 @@ export async function generateEstimateExcel(data: CalculationInput): Promise<Buf
   logoCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + emeraldGreen } };
   logoCell.alignment = { vertical: 'middle', horizontal: 'left' };
 
-  try {
-    const path = require('path');
-    const logoPath = path.join(process.cwd(), 'public/solar_logo.png');
-    const logoId = workbook.addImage({
-      filename: logoPath,
-      extension: 'png',
-    });
-    
-    // Fit the logo cleanly into cell A1:A2 with custom padding to ensure it fits beautifully
+  if (logoId !== null) {
     sheet.addImage(logoId, {
       tl: { col: 0.1, row: 0.15 },
       br: { col: 0.9, row: 1.85 },
       editAs: 'oneCell'
     } as any);
-  } catch (err) {
-    console.error('Failed to embed logo image into Excel:', err);
   }
 
   // 2. CUSTOMER & PROJECT BANNER (Row 3)
@@ -76,6 +241,7 @@ export async function generateEstimateExcel(data: CalculationInput): Promise<Buf
   subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + slateDark } };
   subtitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
   sheet.getRow(3).height = 20;
+
 
   // 3. METRICS BANNER (if ingestion data available)
   if (data.metrics) {
